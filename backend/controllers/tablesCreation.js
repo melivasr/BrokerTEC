@@ -71,7 +71,7 @@ export default async function createAllTables() {
     `);
 
     await queryDB(`
-      CREATE TABLEPrecio_Historico (
+      CREATE TABLE Precio_Historico (
         empresa_id INT NOT NULL,
         ts_utc     DATETIME2(3) NOT NULL,
         precio     DECIMAL(19,4) NOT NULL CHECK (precio > 0),
