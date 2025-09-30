@@ -32,10 +32,10 @@ export async function login(alias, password) {
 
     const { token, user } = response.data;
 
-    // Guardar en localStorage
+    // Guardar todos los datos del usuario retornados por el backend
     localStorage.setItem(
       "user",
-      JSON.stringify({ ...user, token }) // user incluye alias y rol
+      JSON.stringify({ ...user, token })
     );
 
     return response.data;
