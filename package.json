@@ -1,0 +1,19 @@
+{
+  "name": "brokertec",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint:api": "redocly lint docs/openapi.yaml",
+    "preview:api": "redocly preview-docs docs/openapi.yaml",
+    "mock:api": "prism mock docs/openapi.yaml -p 4010"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@redocly/cli": "^2.2.2",
+    "@stoplight/prism-cli": "^5.14.2"
+  }
+}

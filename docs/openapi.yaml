@@ -1,0 +1,174 @@
+openapi: 3.1.0
+info:
+  title: BrokerTEC API
+  version: 0.1.0
+  description: >
+    Contrato inicial de la API. Versionado en /v1. Respuestas con { ok, data|error }.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.brokertec.dev/v1
+  - url: https://mock.brokertec.dev/v1   # referencia al mock (no-localhost para pasar lint)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorRes:
+      type: object
+      required: [ok, error]
+      properties:
+        ok: { type: boolean, const: false }
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+
+# Seguridad GLOBAL: todas las rutas requieren JWT...
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      # ... excepto login: se define explícitamente vacío
+      security: []
+      operationId: authLogin
+      summary: Iniciar sesión
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alias, password]
+              properties:
+                alias: { type: string, minLength: 3, maxLength: 50 }
+                password: { type: string, minLength: 8,  maxLength: 100 }
+            examples:
+              ok: { value: { alias: "ana.trader", password: "Secret123!" } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, const: true }
+                  data:
+                    type: object
+                    properties:
+                      token: { type: string }
+                      role: { type: string, enum: [ADMIN, TRADER, ANALYST] }
+        "401":
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorRes' }
+
+  /trader/home:
+    get:
+      operationId: traderHome
+      summary: Top empresas por mercado y métricas de portada
+      tags: [Trader]
+      parameters:
+        - in: query
+          name: marketId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, const: true }
+                  data:
+                    type: object
+                    properties:
+                      top:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: string }
+                            name: { type: string }
+                            marketId: { type: string }
+                            totalShares: { type: integer, minimum: 0 }
+                            currentPrice: { type: number, minimum: 0 }
+                            marketCap: { type: number, minimum: 0 }
+                            changePct: { type: number }
+                      updatedAt: { type: string, format: date-time }
+        "401":
+          description: No autorizado (token inválido o ausente)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorRes' }
+        "400":
+          description: Parámetro marketId inválido
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorRes' }
+
+  /trader/operate/buy:
+    post:
+      operationId: traderBuy
+      summary: Comprar al precio actual
+      tags: [Trader]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyId, qty]
+              properties:
+                companyId: { type: string }
+                qty: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Ejecutado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, const: true }
+                  data:
+                    type: object
+                    properties:
+                      trade:
+                        type: object
+                        properties:
+                          id: { type: string }
+                          side: { type: string, enum: [BUY, SELL] }
+                          companyId: { type: string }
+                          qty: { type: integer, minimum: 1 }
+                          executedPrice: { type: number, minimum: 0 }
+                          ts: { type: string, format: date-time }
+        "400":
+          description: Regla de negocio (saldo/inventario/límites)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorRes' }
+        "401":
+          description: No autorizado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorRes' }
+        "409":
+          description: Estado cambió (precio/inventario)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorRes' }

@@ -1,0 +1,194 @@
+openapi: 3.1.0
+info:
+  title: BrokerTEC API
+  version: 0.1.0
+  description: >
+    Contrato inicial de la API. Versionado en /v1. Respuestas con { ok, data|error }.
+servers:
+  - url: https://api.local/v1
+  - url: http://localhost:4010/v1   # Prism mock
+
+paths:
+  /auth/login:
+    post:
+      summary: Iniciar sesión
+      tags: [Auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginReq' }
+            examples:
+              ok: { value: { alias: "ana.trader", password: "Secret123!" } }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginRes' }
+              examples:
+                ok:
+                  value:
+                    ok: true
+                    data: { token: "eyJhbGciOi...", role: "TRADER" }
+        "401":
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorRes' }
+              examples:
+                badCreds:
+                  value: { ok: false, error: { code: "AUTH_INVALID_CREDENTIALS", message: "Alias o contraseña inválidos" } }
+
+  /trader/home:
+    get:
+      summary: Top empresas por mercado y métricas de portada
+      tags: [Trader]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: query
+          name: marketId
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, const: true }
+                  data:
+                    type: object
+                    properties:
+                      top:
+                        type: array
+                        items: { $ref: '#/components/schemas/CompanyCard' }
+                      updatedAt: { type: string, format: date-time }
+              examples:
+                sample:
+                  value:
+                    ok: true
+                    data:
+                      top:
+                        - { id: "c-1", name: "ACME", marketId: "m-1", currentPrice: 12.34, totalShares: 1000000, marketCap: 12340000, changePct: 1.2 }
+                        - { id: "c-2", name: "Globex", marketId: "m-1", currentPrice: 8.5, totalShares: 2000000, marketCap: 17000000, changePct: -0.6 }
+                      updatedAt: "2025-09-27T17:00:00Z"
+
+  /trader/operate/buy:
+    post:
+      summary: Comprar al precio actual
+      tags: [Trader]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyId, qty]
+              properties:
+                companyId: { type: string }
+                qty: { type: integer, minimum: 1 }
+      responses:
+        "200":
+          description: Ejecutado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean, const: true }
+                  data:
+                    type: object
+                    properties:
+                      trade: { $ref: '#/components/schemas/Trade' }
+                      wallet: { $ref: '#/components/schemas/Wallet' }
+                      position: { $ref: '#/components/schemas/Position' }
+        "400":
+          description: Regla de negocio (saldo/inventario/límites)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorRes' }
+        "409":
+          description: Estado cambió (precio/inventario)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorRes' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorRes:
+      type: object
+      required: [ok, error]
+      properties:
+        ok: { type: boolean, const: false }
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+
+    LoginReq:
+      type: object
+      additionalProperties: false
+      required: [alias, password]
+      properties:
+        alias: { type: string, minLength: 3, maxLength: 50 }
+        password: { type: string, minLength: 8, maxLength: 100 }
+
+    LoginRes:
+      type: object
+      required: [ok, data]
+      properties:
+        ok: { type: boolean, const: true }
+        data:
+          type: object
+          required: [token, role]
+          properties:
+            token: { type: string }
+            role: { type: string, enum: [ADMIN, TRADER, ANALYST] }
+
+    CompanyCard:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        marketId: { type: string }
+        totalShares: { type: integer, minimum: 0 }
+        currentPrice: { type: number, minimum: 0 }
+        marketCap: { type: number, minimum: 0 }
+        changePct: { type: number }
+
+    Trade:
+      type: object
+      properties:
+        id: { type: string }
+        side: { type: string, enum: [BUY, SELL] }
+        companyId: { type: string }
+        qty: { type: integer, minimum: 1 }
+        executedPrice: { type: number, minimum: 0 }
+        ts: { type: string, format: date-time }
+
+    Wallet:
+      type: object
+      properties:
+        balance: { type: number, minimum: 0 }
+        category: { type: string, enum: [JUNIOR, MID, SENIOR] }
+        dailyTopupLimit: { type: number, minimum: 0 }
+
+    Position:
+      type: object
+      properties:
+        companyId: { type: string }
+        qty: { type: integer, minimum: 0 }
+        avgCost: { type: number, minimum: 0 }
