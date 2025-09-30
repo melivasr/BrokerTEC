@@ -1,0 +1,69 @@
+@startuml
+!define RECTANGLE class
+hide circle
+hide methods
+hide stereotypes
+
+' ===== Entidades =====
+entity "Usuario" as Usuario {
+  *id
+  nombre
+  alias
+  direccion
+  pais_origen
+  telefono
+  correo
+  rol (Admin/Trader/Analista)
+  fondos
+  limite_diario
+  contraseña (hash)
+}
+
+entity "Empresa" as Empresa {
+  *id
+  id_mercado <<FK>>
+  nombre
+  ticker
+  acciones
+  acciones_disponibles
+  precio_accion
+  capitalizacion <<derived>>
+}
+
+entity "Historico_Empresa" as Historico_Empresa {
+  *fecha
+  *id_empresa <<FK>>
+  id_mercado <<FK>>
+  nombre 
+  ticker
+  acciones
+  acciones_disponibles
+  precio_accion
+  capitalizacion <<derived>>
+}
+
+entity "Mercado_Habilitado" as Mercado_Habilitado {
+  *id
+  nombre
+  id_usuario <<FK>>
+}
+
+entity "Acciones" as Acciones {
+	*id_usuario
+	*id_empresa
+	acciones
+	valor <<derived>>
+}
+
+' ===== Relaciones =====
+Usuario ||--o{ Usuario : Habilita (Admin)
+Usuario ||--o{ Usuario : Deshabilita (Admin)
+Usuario }o--o{ Usuario : Analiza (Analista)
+Usuario }o--o{ Empresa : Compra (Trader)
+Usuario }o--o{ Empresa : Vende (Trader)
+Usuario }|--o{ Empresa : Habilita (Admin)
+Usuario }|--o{ Empresa : Deshabilita (Admin)
+Usuario }|--o{ Empresa : Actualiza Precio (Admin)
+Empresa }|--|| Mercado_Habilitado : Pertenece
+
+@enduml
