@@ -32,10 +32,10 @@ export async function login(alias, password) {
 
     const { token, user } = response.data;
 
-    // Guardar en localStorage
+    // Guardar todos los datos del usuario retornados por el backend
     localStorage.setItem(
       "user",
-      JSON.stringify({ ...user, token }) // user incluye alias y rol
+      JSON.stringify({ ...user, token })
     );
 
     return response.data;
@@ -61,5 +61,47 @@ export function authHeader() {
     return { Authorization: `Bearer ${user.token}` };
   } else {
     return {};
+  }
+}
+
+// Actualizar datos personales
+export async function updateUser(data) {
+  try {
+    const user = getCurrentUser();
+    const response = await axios.put(
+      `http://localhost:4000/api/auth/${user.usuario_id}`,
+      data,
+      { headers: authHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || "Error al actualizar usuario";
+  }
+}
+
+// Eliminar usuario
+export async function deleteUser(usuario_id) {
+  try {
+    const response = await axios.delete(
+      `http://localhost:4000/api/auth/${usuario_id}`,
+      { headers: authHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || "Error al eliminar usuario";
+  }
+}
+
+// Cambiar contraseña
+export async function changePassword({ usuario_id, old, new: newPassword }) {
+  try {
+    const response = await axios.post(
+      `http://localhost:4000/api/auth/${usuario_id}/change-password`,
+      { old, new: newPassword },
+      { headers: authHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || "Error al cambiar contraseña";
   }
 }
