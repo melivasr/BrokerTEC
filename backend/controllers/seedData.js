@@ -1,8 +1,8 @@
 import { queryDB } from '../config/db.js';
+import bcrypt from 'bcryptjs';
 
-export default async function seedData() {
+
   try {
-    
     // 1. Categorías
     await queryDB(`
       INSERT INTO Categoria (nombre, limite_diario) VALUES
@@ -11,7 +11,6 @@ export default async function seedData() {
       ('Ilimitada', 999999);
     `);
 
-    
     // 2. Mercados
     await queryDB(`
       INSERT INTO Mercado (nombre, estado) VALUES
@@ -20,14 +19,17 @@ export default async function seedData() {
       ('BME', 'Activo');
     `);
 
-    
-    // 3. Usuarios
+    // 3. Usuarios (con contraseñas hasheadas)
+    const adminHash = await bcrypt.hash('admin123', 10);
+    const trader1Hash = await bcrypt.hash('trader123', 10);
+    const trader2Hash = await bcrypt.hash('trader456', 10);
+    const analista1Hash = await bcrypt.hash('analista123', 10);
     await queryDB(`
       INSERT INTO Usuario (alias, nombre, direccion, pais_origen, telefono, correo, contrasena_hash, rol, estado) VALUES
-      ('admin1', N'Administrador General', N'San José', N'Costa Rica', N'8888-8888', 'admin@example.com', 'hash_admin', 'Admin', 'Activo'),
-      ('trader1', N'Juan Pérez', N'Heredia', N'Costa Rica', N'7777-7777', 'trader1@example.com', 'hash_trader1', 'Trader', 'Activo'),
-      ('trader2', N'Ana Rodríguez', N'Alajuela', N'Costa Rica', N'6666-6666', 'trader2@example.com', 'hash_trader2', 'Trader', 'Activo'),
-      ('analista1', N'María Gómez', N'Cartago', N'Costa Rica', N'5555-5555', 'analista1@example.com', 'hash_analista1', 'Analista', 'Activo');
+      ('admin1', N'Administrador General', N'San José', N'Costa Rica', N'8888-8888', 'admin@example.com', '${adminHash}', 'Admin', 'Activo'),
+      ('trader1', N'Juan Pérez', N'Heredia', N'Costa Rica', N'7777-7777', 'trader1@example.com', '${trader1Hash}', 'Trader', 'Activo'),
+      ('trader2', N'Ana Rodríguez', N'Alajuela', N'Costa Rica', N'6666-6666', 'trader2@example.com', '${trader2Hash}', 'Trader', 'Activo'),
+      ('analista1', N'María Gómez', N'Cartago', N'Costa Rica', N'5555-5555', 'analista1@example.com', '${analista1Hash}', 'Analista', 'Activo');
     `);
 
     
@@ -162,8 +164,8 @@ export default async function seedData() {
     console.error('Error insertando datos semilla:', err);
     throw err;
   }
-}
-(async () => {
+
+ (async () => {
   await seedData();
   console.log("Datos de prueba insertados");
   process.exit(0);
