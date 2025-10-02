@@ -6,6 +6,11 @@ import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import logo from './logo.svg';
 import HomeTrader from './pages/Trader/HomeTrader';
+import Wallet from './pages/Trader/Wallet';
+import Portafolio from './pages/Trader/Portafolio';
+import EmpresaDetalle from './pages/Trader/EmpresaDetalle';
+import Operar from './pages/Trader/Operar';
+import Seguridad from './pages/Trader/Seguridad';
 import Catalogos from './pages/Admin/Catalogos';
 import ReportesEmpresa from './pages/Analista/ReportesEmpresa';
 import Perfil from './pages/Common/Perfil';
@@ -30,6 +35,11 @@ function AppContent() {
         <Route path="/register" element={<Register />} />
         {/* Dashboards por rol */}
         <Route path="/trader/home" element={<HomeTrader />} />
+        <Route path="/trader/wallet" element={<Wallet />} />
+        <Route path="/trader/portafolio" element={<Portafolio />} />
+        <Route path="/trader/empresa/:empresaId" element={<EmpresaDetalle />} />
+  <Route path="/trader/operar" element={<Operar />} />
+  <Route path="/trader/seguridad" element={<Seguridad />} />
         <Route path="/admin/catalogos" element={<Catalogos />} />
         <Route path="/analista/empresa" element={<ReportesEmpresa />} />
         {/* Perfil común */}

@@ -7,11 +7,13 @@ const options = {
     { name: "Precios", path: "/admin/precios" },
     { name: "Reportes", path: "/admin/reportes" },
     { name: "Usuarios y Cuentas", path: "/admin/usuarios-cuentas" },
+    { name: "Perfil", path: "/perfil" },
   ],
   Analista: [
     { name: "Estadísticas", path: "/analista/estadisticas" },
     { name: "Reportes Empresa", path: "/analista/empresa" },
     { name: "Reportes Usuario", path: "/analista/usuario" },
+    { name: "Perfil", path: "/perfil" },
   ],
   Trader: [
     { name: "Home", path: "/trader/home" },
@@ -19,7 +21,9 @@ const options = {
     { name: "Portafolio", path: "/trader/portafolio" },
     { name: "Wallet", path: "/trader/wallet" },
     { name: "Seguridad", path: "/trader/seguridad" },
-    { name: "Empresa Detalle", path: "/trader/empresa" },
+  // Para navegación dinámica, puedes usar un ejemplo o dejar la opción para seleccionar empresa
+  { name: "Empresa Detalle", path: "/trader/empresa/1" },
+    { name: "Perfil", path: "/perfil" },
   ],
 };
 
