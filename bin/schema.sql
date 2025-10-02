@@ -130,3 +130,5 @@ CREATE TABLE Acciones (
   CONSTRAINT FK_Acciones_Usuario FOREIGN KEY (id_usuario) REFERENCES Usuario(usuario_id),
   CONSTRAINT FK_Acciones_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(empresa_id)
 );
+
+GO

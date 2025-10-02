@@ -109,3 +109,5 @@ INSERT INTO App_Setting (clave, valor) VALUES
 ('version', N'1.0.0'),
 ('modo', N'desarrollo'),
 ('max_operaciones_diarias', N'100');
+
+GO
