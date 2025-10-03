@@ -6,64 +6,134 @@ hide stereotypes
 
 ' ===== Entidades =====
 entity "Usuario" as Usuario {
-  *id
-  nombre
-  alias
-  direccion
-  pais_origen
-  telefono
-  correo
-  rol (Admin/Trader/Analista)
-  fondos
-  limite_diario
-  contraseña (hash)
+	*id
+	id_billetera <<FK>>
+	id_portafolio <<FK>>
+	nombre
+	alias
+	habilitado
+	deshabilitado_justificacion
+	direccion
+	pais_origen
+	telefono
+	correo
+	rol (Admin/Trader/Analista)
+	contraseña (hash)
 }
 
 entity "Empresa" as Empresa {
-  *id
-  id_mercado <<FK>>
-  nombre
-  ticker
-  acciones
-  acciones_disponibles
-  precio_accion
-  capitalizacion <<derived>>
+	*id
+	id_mercado <<FK>>
+	nombre
+	ticker
 }
 
-entity "Historico_Empresa" as Historico_Empresa {
-  *fecha
-  *id_empresa <<FK>>
-  id_mercado <<FK>>
-  nombre 
-  ticker
-  acciones
-  acciones_disponibles
-  precio_accion
-  capitalizacion <<derived>>
+entity "Mercado" as Mercado {
+	*id
+	nombre
 }
 
 entity "Mercado_Habilitado" as Mercado_Habilitado {
-  *id
-  nombre
-  id_usuario <<FK>>
+	*id_mercado <<FK>>
+	*id_usuario <<FK>>
 }
 
-entity "Acciones" as Acciones {
-	*id_usuario
-	*id_empresa
+entity Transaccion as "Transaccion" {
+	*id
+	id_empresa <<FK>>
+	alias <<FK>>
+	id_portafolio <<FK>>
+	tipo (Compra/Venta)
+	precio
+	cantidad
+	fecha
+}
+
+entity "Inventario" as Inventario {
+	*id_empresa <<FK>>
+	acciones_totales
+	acciones_disponibles
+	precio_accion
+	capitalizacion <<derived>>
+}
+
+entity "Inventario_historial" as Inventario_historial {
+	*fecha
+	*id_empresa <<FK>>
+	acciones_totales
+	acciones_disponibles
+	precio_accion
+	capitalizacion <<derived>>
+}
+
+entity "Billetera" as Billetera {
+	*id
+	categoria
+	fondos
+	limite_diario
+	consumo
+}
+
+'clarificar que es recargar, consumir, y limite_diario
+entity "Billetera_historial" as Billetera_historial {
+	*fecha
+	*id
+	categoria
+	fondos
+	limite_diario
+	consumo
+}
+
+' que es costo promedio?
+entity "Portafolio" as Portafolio {
+	*id
+	id_empresa <<FK>>
 	acciones
-	valor <<derived>>
+}
+
+entity "Portafolio_historial" as Portafolio_historial {
+	*fecha
+	*id
+	id_empresa <<FK>>
+	acciones
 }
 
 ' ===== Relaciones =====
 Usuario ||--o{ Usuario : Habilita (Admin)
 Usuario ||--o{ Usuario : Deshabilita (Admin)
+Usuario ||--o{ Usuario : Crea (Admin)
+Usuario ||--o{ Usuario : Borra (Admin)
+Usuario ||--o{ Usuario : Actualiza (Admin/El mismo)
 Usuario }o--o{ Usuario : Analiza (Analista)
-Usuario }o--o{ Empresa : Compra (Trader)
-Usuario }o--o{ Empresa : Vende (Trader)
-Usuario }|--o{ Empresa : Habilita (Admin)
-Usuario }|--o{ Empresa : Deshabilita (Admin)
-Usuario }|--o{ Empresa : Actualiza Precio (Admin)
-Empresa }|--|| Mercado_Habilitado : Pertenece
+
+Usuario }o--o{ Inventario : Compra (Trader)
+Usuario }o--o{ Inventario : Vende (Trader)
+Usuario }|--o{ Inventario : Actualiza Precio (Admin)
+Usuario }|--o{ Inventario : Analiza (Todos)
+Usuario }|--o{ Transaccion : Analiza (Analista)
+
+Usuario }|--o{ Empresa : Crea (Admin)
+Usuario }|--o{ Empresa : Elimina (Admin)
+Usuario }|--o{ Empresa : Actualiza (Admin)
+Usuario }|--o{ Empresa : Lista (Admin)
+Usuario }|--o{ Empresa : Delista (Admin)
+Usuario }|--o{ Empresa : Analiza (Todos)
+
+Usuario }|--o{ Mercado : Crea (Admin)
+Usuario }|--o{ Mercado : Elimina (Admin)
+Usuario }|--o{ Mercado : Actualiza (Admin)
+Usuario }|--o{ Mercado : Analiza (Todos)
+Usuario }|--o{ Mercado : Participa (Trader)
+
+' preguntar si Usuario }o--o{ Billetera/Portafolio es posible
+Usuario ||--o| Billetera : Tiene (Trader)
+Usuario ||--o| Portafolio : Tiene (Trader)
+
+Empresa }|--|| Mercado : Pertenece
+Inventario ||--o{ Empresa : Indexa
+
+Inventario_historial ||--|| Inventario : Recuerda
+Billetera_historial ||--|| Billetera : Recuerda
+Portafolio_historial ||--|| Portafolio : Recuerda
 
 @enduml
