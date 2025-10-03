@@ -78,7 +78,7 @@ entity "Billetera" as Billetera {
 'clarificar que es recargar, consumir, y limite_diario
 entity "Billetera_historial" as Billetera_historial {
 	*fecha : DATETIME2
-	*id : UNIQUEIDENTIFIER <<FK>>
+	*id_billetera : UNIQUEIDENTIFIER <<FK>>
 	categoria : NVARCHAR
 	fondos : DECIMAL
 	limite_diario : DECIMAL
@@ -94,7 +94,7 @@ entity "Portafolio" as Portafolio {
 
 entity "Portafolio_historial" as Portafolio_historial {
 	*fecha : DATETIME2
-	*id : UNIQUEIDENTIFIER <<FK>>
+	*id_portafolio : UNIQUEIDENTIFIER <<FK>>
 	' id_empresa referencia a Empresa
 	id_empresa : UNIQUEIDENTIFIER <<FK>>
 	acciones : INT
