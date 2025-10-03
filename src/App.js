@@ -1,11 +1,16 @@
 
 import './App.css';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useLocation } from 'react-router-dom';
 
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import logo from './logo.svg';
 import HomeTrader from './pages/Trader/HomeTrader';
+import Wallet from './pages/Trader/Wallet';
+import Portafolio from './pages/Trader/Portafolio';
+import EmpresaDetalle from './pages/Trader/EmpresaDetalle';
+import Operar from './pages/Trader/Operar';
+import Seguridad from './pages/Trader/Seguridad';
 import Catalogos from './pages/Admin/Catalogos';
 import ReportesEmpresa from './pages/Analista/ReportesEmpresa';
 import Perfil from './pages/Common/Perfil';
@@ -13,7 +18,9 @@ import Precios from './pages/Admin/Precios';
 import UsuariosCuentas from './pages/Admin/UsuariosCuentas';
 
 
-function App() {
+function AppContent() {
+  const location = useLocation();
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
   return (
     <Router>
       <div className="App" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -46,4 +53,4 @@ function App() {
   );
 }
 
-export default App;
+export default AppContent;
