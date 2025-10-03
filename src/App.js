@@ -8,6 +8,12 @@ import logo from './logo.svg';
 import HomeTrader from './pages/Trader/HomeTrader';
 import Catalogos from './pages/Admin/Catalogos';
 import ReportesEmpresa from './pages/Analista/ReportesEmpresa';
+<<<<<<< Updated upstream
+=======
+import Perfil from './pages/Common/Perfil';
+import Precios from './pages/Admin/Precios';
+import UsuariosCuentas from './pages/Admin/UsuariosCuentas';
+>>>>>>> Stashed changes
 
 
 function App() {
@@ -20,6 +26,7 @@ function App() {
           <Link to="/login" style={{ marginRight: 16 }}>Iniciar sesión</Link>
           <Link to="/register">Registrarse</Link>
         </nav>
+<<<<<<< Updated upstream
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -30,6 +37,35 @@ function App() {
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </div>
+=======
+      </>}
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        {/* Dashboards por rol */}
+        <Route path="/trader/home" element={<HomeTrader />} />
+        <Route path="/trader/wallet" element={<Wallet />} />
+        <Route path="/trader/portafolio" element={<Portafolio />} />
+        <Route path="/trader/empresa/:empresaId" element={<EmpresaDetalle />} />
+        <Route path="/trader/operar" element={<Operar />} />
+        <Route path="/trader/seguridad" element={<Seguridad />} />
+        <Route path="/admin/catalogos" element={<Catalogos />} />
+        <Route path="/admin/precios" element={<Precios />} />
+        <Route path="/admin/usuarios-cuentas" element={<UsuariosCuentas />} />
+        <Route path="/analista/empresa" element={<ReportesEmpresa />} />
+        {/* Perfil común */}
+        <Route path="/perfil" element={<Perfil />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppContent />
+>>>>>>> Stashed changes
     </Router>
   );
 }
