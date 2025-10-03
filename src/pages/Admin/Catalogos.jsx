@@ -1,10 +1,3 @@
-<<<<<<< Updated upstream
-// src/pages/Admin/Catalogos.jsx
-import React from "react";
-export default function Catalogos() {
-  return <h2>Dashboard Admin: Catálogos</h2>;
-}
-=======
 import React, { useEffect, useState } from 'react';
 import { getMercados, createMercado, updateMercado, deleteMercado } from '../../services/empresaService';
 import { getEmpresas, createEmpresa, updateEmpresa, delistarEmpresa } from '../../services/empresaService';
@@ -85,4 +78,3 @@ const Catalogos = () => {
 };
 
 export default Catalogos;
->>>>>>> Stashed changes

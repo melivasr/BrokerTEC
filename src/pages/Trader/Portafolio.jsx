@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import * as empresaService from "../../services/empresaService";
@@ -118,4 +116,3 @@ export default function Portafolio() {
     </div>
   );
 }
->>>>>>> Stashed changes

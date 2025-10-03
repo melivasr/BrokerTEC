@@ -1,5 +1,3 @@
-<<<<<<< Updated upstream
-=======
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
@@ -129,4 +127,3 @@ export default function Operar() {
     </div>
   );
 }
->>>>>>> Stashed changes
