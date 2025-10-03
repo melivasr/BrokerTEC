@@ -131,6 +131,7 @@ Usuario }|--o{ Mercado : Participa (Trader)
 Usuario ||--o| Billetera : Tiene (Trader)
 Usuario ||--o| Portafolio : Tiene (Trader)
 
+' preguntar si una empresa puede estar en varios mercados
 Empresa }|--|| Mercado : Pertenece
 Inventario ||--o{ Empresa : Indexa
 
