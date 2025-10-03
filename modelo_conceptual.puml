@@ -6,96 +6,98 @@ hide stereotypes
 
 ' ===== Entidades =====
 entity "Usuario" as Usuario {
-	*id
-	id_billetera <<FK>>
-	id_portafolio <<FK>>
-	nombre
-	alias
-	habilitado
-	deshabilitado_justificacion
-	direccion
-	pais_origen
-	telefono
-	correo
-	rol (Admin/Trader/Analista)
-	contraseña (hash)
+	*id : UNIQUEIDENTIFIER
+	id_billetera : UNIQUEIDENTIFIER <<FK>>
+	id_portafolio : UNIQUEIDENTIFIER <<FK>>
+	nombre : NVARCHAR
+	alias : NVARCHAR
+	habilitado (Verdadero/Falso) : BIT
+	deshabilitado_justificacion : NVARCHAR
+	direccion : NVARCHAR
+	pais_origen : NVARCHAR
+	telefono : NVARCHAR
+	correo : NVARCHAR
+	rol (Admin/Trader/Analista) : NVARCHAR
+	contraseña (hash) : VARCHAR
 }
 
 entity "Empresa" as Empresa {
-	*id
-	id_mercado <<FK>>
-	nombre
-	ticker
+	*id : UNIQUEIDENTIFIER
+	id_mercado : UNIQUEIDENTIFIER <<FK>>
+	nombre : NVARCHAR
+	ticker : CHAR
 }
 
 entity "Mercado" as Mercado {
-	*id
-	nombre
+	*id : UNIQUEIDENTIFIER
+	nombre : NVARCHAR
 }
 
 entity "Mercado_Habilitado" as Mercado_Habilitado {
-	*id_mercado <<FK>>
-	*id_usuario <<FK>>
+	*id_mercado : UNIQUEIDENTIFIER <<FK>>
+	*id_usuario : UNIQUEIDENTIFIER <<FK>>
 }
 
 entity Transaccion as "Transaccion" {
-	*id
-	id_empresa <<FK>>
-	alias <<FK>>
-	id_portafolio <<FK>>
-	tipo (Compra/Venta)
-	precio
-	cantidad
-	fecha
+	*id : UNIQUEIDENTIFIER
+	alias : NVARCHAR <<FK>> 
+	id_portafolio : UNIQUEIDENTIFIER <<FK>>
+	id_billetera : UNIQUEIDENTIFIER <<FK>>
+	id_empresa : UNIQUEIDENTIFIER <<FK>>
+	tipo (Compra/Venta) : NVARCHAR
+	precio : DECIMAL
+	cantidad : INT
+	fecha : DATETIME2
 }
 
 entity "Inventario" as Inventario {
-	*id_empresa <<FK>>
+	*id_empresa : UNIQUEIDENTIFIER <<FK>>
 	acciones_totales
 	acciones_disponibles
-	precio_accion
-	capitalizacion <<derived>>
+	precio : DECIMAL
+	capitalizacion : DECIMAL <<derived>>
 }
 
 entity "Inventario_historial" as Inventario_historial {
-	*fecha
-	*id_empresa <<FK>>
-	acciones_totales
-	acciones_disponibles
-	precio_accion
-	capitalizacion <<derived>>
+	*fecha : DATETIME2
+	*id_empresa : UNIQUEIDENTIFIER <<FK>>
+	acciones_totales : INT
+	acciones_disponibles : INT
+	precio : DECIMAL
+	capitalizacion : DECIMAL <<derived>>
 }
 
 entity "Billetera" as Billetera {
-	*id
-	categoria
-	fondos
-	limite_diario
-	consumo
+	*id : UNIQUEIDENTIFIER
+	categoria (Junior/Mid/Senior) : NVARCHAR
+	fondos : DECIMAL
+	limite_diario : DECIMAL
+	consumo : DECIMAL
 }
 
 'clarificar que es recargar, consumir, y limite_diario
 entity "Billetera_historial" as Billetera_historial {
-	*fecha
-	*id
-	categoria
-	fondos
-	limite_diario
-	consumo
+	*fecha : DATETIME2
+	*id : UNIQUEIDENTIFIER <<FK>>
+	categoria : NVARCHAR
+	fondos : DECIMAL
+	limite_diario : DECIMAL
+	consumo : DECIMAL
 }
 
 ' que es costo promedio?
 entity "Portafolio" as Portafolio {
-	*id
-	id_empresa <<FK>>
-	acciones
+	*id : UNIQUEIDENTIFIER
+	id_empresa : UNIQUEIDENTIFIER <<FK>>
+	acciones : INT
 }
 
 entity "Portafolio_historial" as Portafolio_historial {
-	*fecha
-	*id
-	id_empresa <<FK>>
-	acciones
+	*fecha : DATETIME2
+	*id : UNIQUEIDENTIFIER <<FK>>
+	' id_empresa referencia a Empresa
+	id_empresa : UNIQUEIDENTIFIER <<FK>>
+	acciones : INT
 }
 
 ' ===== Relaciones =====
