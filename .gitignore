@@ -21,3 +21,8 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# varas para testear
+.mssql
+backend/node_modules
+backend/.env

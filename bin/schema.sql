@@ -1,0 +1,119 @@
+-- ===============================
+-- Tablas principales
+-- ===============================
+
+CREATE TABLE Mercado (
+	id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+	nombre NVARCHAR(100) NOT NULL UNIQUE
+);
+
+CREATE TABLE Empresa (
+	id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+	id_mercado UNIQUEIDENTIFIER NOT NULL,
+	nombre NVARCHAR(160) NOT NULL,
+	ticker CHAR(6) NOT NULL,
+	CONSTRAINT FK_Empresa_Mercado FOREIGN KEY (id_mercado) REFERENCES Mercado(id),
+	CONSTRAINT UQ_Empresa_Ticker UNIQUE (id_mercado, ticker)
+);
+
+CREATE TABLE Billetera (
+	id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+	categoria NVARCHAR(20) NOT NULL CHECK (categoria IN ('Junior','Mid','Senior')),
+	fondos DECIMAL(19,4) NOT NULL DEFAULT 0,
+	limite_diario DECIMAL(19,4) NOT NULL DEFAULT 0,
+	consumo DECIMAL(19,4) NOT NULL DEFAULT 0
+);
+
+CREATE TABLE Portafolio (
+	id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+	id_empresa UNIQUEIDENTIFIER NOT NULL,
+	acciones INT NOT NULL CHECK (acciones >= 0),
+	CONSTRAINT FK_Portafolio_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+);
+
+CREATE TABLE Usuario (
+	id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+	id_billetera UNIQUEIDENTIFIER NULL,
+	id_portafolio UNIQUEIDENTIFIER NULL,
+	nombre NVARCHAR(120) NOT NULL,
+	alias NVARCHAR(40) NOT NULL UNIQUE,
+	habilitado BIT NOT NULL DEFAULT 1,
+	deshabilitado_justificacion NVARCHAR(255) NULL,
+	direccion NVARCHAR(255) NULL,
+	pais_origen NVARCHAR(80) NULL,
+	telefono NVARCHAR(30) NULL,
+	correo NVARCHAR(120) NOT NULL UNIQUE,
+	rol NVARCHAR(20) NOT NULL CHECK (rol IN ('Admin','Trader','Analista')),
+	contrasena_hash VARCHAR(255) NOT NULL,
+	CONSTRAINT FK_Usuario_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id),
+	CONSTRAINT FK_Usuario_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
+);
+
+CREATE TABLE Mercado_Habilitado (
+	id_mercado UNIQUEIDENTIFIER NOT NULL,
+	id_usuario UNIQUEIDENTIFIER NOT NULL,
+	PRIMARY KEY (id_mercado, id_usuario),
+	CONSTRAINT FK_MH_Mercado FOREIGN KEY (id_mercado) REFERENCES Mercado(id),
+	CONSTRAINT FK_MH_Usuario FOREIGN KEY (id_usuario) REFERENCES Usuario(id)
+);
+
+CREATE TABLE Inventario (
+	id_empresa UNIQUEIDENTIFIER PRIMARY KEY,
+	acciones_totales INT NOT NULL CHECK (acciones_totales >= 0),
+	acciones_disponibles INT NOT NULL CHECK (acciones_disponibles >= 0),
+	precio DECIMAL(19,4) NOT NULL CHECK (precio > 0),
+	capitalizacion AS (acciones_disponibles * precio),  -- columna derivada
+	CONSTRAINT FK_Inventario_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+);
+
+CREATE TABLE Transaccion (
+	id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+	alias NVARCHAR(40) NOT NULL,
+	id_portafolio UNIQUEIDENTIFIER NOT NULL,
+	id_billetera UNIQUEIDENTIFIER NOT NULL,
+	id_empresa UNIQUEIDENTIFIER NOT NULL,
+	tipo NVARCHAR(10) NOT NULL CHECK (tipo IN ('Compra','Venta')),
+	precio DECIMAL(19,4) NOT NULL CHECK (precio > 0),
+	cantidad INT NOT NULL CHECK (cantidad > 0),
+	fecha DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+	CONSTRAINT FK_Transaccion_Usuario FOREIGN KEY (alias) REFERENCES Usuario(alias),
+	CONSTRAINT FK_Transaccion_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id),
+	CONSTRAINT FK_Transaccion_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id),
+	CONSTRAINT FK_Transaccion_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+);
+
+-- ===============================
+-- Tablas historial
+-- ===============================
+
+CREATE TABLE Inventario_Historial (
+	fecha DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+	id_empresa UNIQUEIDENTIFIER NOT NULL,
+	acciones_totales INT NOT NULL,
+	acciones_disponibles INT NOT NULL,
+	precio DECIMAL(19,4) NOT NULL,
+	capitalizacion AS (acciones_disponibles * precio),
+	PRIMARY KEY (fecha, id_empresa),
+	CONSTRAINT FK_IH_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+);
+
+CREATE TABLE Billetera_Historial (
+	fecha DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+	id_billetera UNIQUEIDENTIFIER NOT NULL,
+	categoria NVARCHAR(20) NOT NULL,
+	fondos DECIMAL(19,4) NOT NULL,
+	limite_diario DECIMAL(19,4) NOT NULL,
+	consumo DECIMAL(19,4) NOT NULL,
+	PRIMARY KEY (fecha, id_billetera),
+	CONSTRAINT FK_BH_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id)
+);
+
+CREATE TABLE Portafolio_Historial (
+	fecha DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+	id_portafolio UNIQUEIDENTIFIER NOT NULL,
+	id_empresa UNIQUEIDENTIFIER NOT NULL,
+	acciones INT NOT NULL CHECK (acciones >= 0),
+	PRIMARY KEY (fecha, id_portafolio, id_empresa),
+	CONSTRAINT FK_PH_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id),
+	CONSTRAINT FK_PH_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+);

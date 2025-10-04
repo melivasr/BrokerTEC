@@ -1,0 +1,142 @@
+@startuml
+!define RECTANGLE class
+hide circle
+hide methods
+hide stereotypes
+
+' ===== Entidades =====
+entity "Usuario" as Usuario {
+	*id : UNIQUEIDENTIFIER
+	id_billetera : UNIQUEIDENTIFIER <<FK>>
+	id_portafolio : UNIQUEIDENTIFIER <<FK>>
+	nombre : NVARCHAR
+	alias : NVARCHAR
+	habilitado (Verdadero/Falso) : BIT
+	deshabilitado_justificacion : NVARCHAR
+	direccion : NVARCHAR
+	pais_origen : NVARCHAR
+	telefono : NVARCHAR
+	correo : NVARCHAR
+	rol (Admin/Trader/Analista) : NVARCHAR
+	contraseña (hash) : VARCHAR
+}
+
+entity "Empresa" as Empresa {
+	*id : UNIQUEIDENTIFIER
+	id_mercado : UNIQUEIDENTIFIER <<FK>>
+	nombre : NVARCHAR
+	ticker : CHAR
+}
+
+entity "Mercado" as Mercado {
+	*id : UNIQUEIDENTIFIER
+	nombre : NVARCHAR
+}
+
+entity "Mercado_Habilitado" as Mercado_Habilitado {
+	*id_mercado : UNIQUEIDENTIFIER <<FK>>
+	*id_usuario : UNIQUEIDENTIFIER <<FK>>
+}
+
+entity Transaccion as "Transaccion" {
+	*id : UNIQUEIDENTIFIER
+	alias : NVARCHAR <<FK>> 
+	id_portafolio : UNIQUEIDENTIFIER <<FK>>
+	id_billetera : UNIQUEIDENTIFIER <<FK>>
+	id_empresa : UNIQUEIDENTIFIER <<FK>>
+	tipo (Compra/Venta) : NVARCHAR
+	precio : DECIMAL
+	cantidad : INT
+	fecha : DATETIME2
+}
+
+entity "Inventario" as Inventario {
+	*id_empresa : UNIQUEIDENTIFIER <<FK>>
+	acciones_totales
+	acciones_disponibles
+	precio : DECIMAL
+	capitalizacion : DECIMAL <<derived>>
+}
+
+entity "Inventario_historial" as Inventario_historial {
+	*fecha : DATETIME2
+	*id_empresa : UNIQUEIDENTIFIER <<FK>>
+	acciones_totales : INT
+	acciones_disponibles : INT
+	precio : DECIMAL
+	capitalizacion : DECIMAL <<derived>>
+}
+
+entity "Billetera" as Billetera {
+	*id : UNIQUEIDENTIFIER
+	categoria (Junior/Mid/Senior) : NVARCHAR
+	fondos : DECIMAL
+	limite_diario : DECIMAL
+	consumo : DECIMAL
+}
+
+'clarificar que es recargar, consumir, y limite_diario
+entity "Billetera_historial" as Billetera_historial {
+	*fecha : DATETIME2
+	*id_billetera : UNIQUEIDENTIFIER <<FK>>
+	categoria : NVARCHAR
+	fondos : DECIMAL
+	limite_diario : DECIMAL
+	consumo : DECIMAL
+}
+
+' que es costo promedio?
+entity "Portafolio" as Portafolio {
+	*id : UNIQUEIDENTIFIER
+	id_empresa : UNIQUEIDENTIFIER <<FK>>
+	acciones : INT
+}
+
+entity "Portafolio_historial" as Portafolio_historial {
+	*fecha : DATETIME2
+	*id_portafolio : UNIQUEIDENTIFIER <<FK>>
+	' id_empresa referencia a Empresa
+	id_empresa : UNIQUEIDENTIFIER <<FK>>
+	acciones : INT
+}
+
+' ===== Relaciones =====
+Usuario ||--o{ Usuario : Habilita (Admin)
+Usuario ||--o{ Usuario : Deshabilita (Admin)
+Usuario ||--o{ Usuario : Crea (Admin)
+Usuario ||--o{ Usuario : Borra (Admin)
+Usuario ||--o{ Usuario : Actualiza (Admin/El mismo)
+Usuario }o--o{ Usuario : Analiza (Analista)
+
+Usuario }o--o{ Inventario : Compra (Trader)
+Usuario }o--o{ Inventario : Vende (Trader)
+Usuario }|--o{ Inventario : Actualiza Precio (Admin)
+Usuario }|--o{ Inventario : Analiza (Todos)
+Usuario }|--o{ Transaccion : Analiza (Analista)
+
+Usuario }|--o{ Empresa : Crea (Admin)
+Usuario }|--o{ Empresa : Elimina (Admin)
+Usuario }|--o{ Empresa : Actualiza (Admin)
+Usuario }|--o{ Empresa : Lista (Admin)
+Usuario }|--o{ Empresa : Delista (Admin)
+Usuario }|--o{ Empresa : Analiza (Todos)
+
+Usuario }|--o{ Mercado : Crea (Admin)
+Usuario }|--o{ Mercado : Elimina (Admin)
+Usuario }|--o{ Mercado : Actualiza (Admin)
+Usuario }|--o{ Mercado : Analiza (Todos)
+Usuario }|--o{ Mercado : Participa (Trader)
+
+' preguntar si Usuario }o--o{ Billetera/Portafolio es posible
+Usuario ||--o| Billetera : Tiene (Trader)
+Usuario ||--o| Portafolio : Tiene (Trader)
+
+' preguntar si una empresa puede estar en varios mercados
+Empresa }|--|| Mercado : Pertenece
+Inventario ||--o{ Empresa : Indexa
+
+Inventario_historial ||--|| Inventario : Recuerda
+Billetera_historial ||--|| Billetera : Recuerda
+Portafolio_historial ||--|| Portafolio : Recuerda
+
+@enduml
