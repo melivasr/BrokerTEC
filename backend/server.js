@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 4000;
 
 (async () => {
   try {
-    await createAllTables();             
+    //await createAllTables();             
     app.listen(PORT, () => {
       console.log(`Servidor corriendo en http://localhost:${PORT}`);
     });
