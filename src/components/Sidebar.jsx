@@ -5,7 +5,6 @@ const options = {
   Admin: [
     { name: "Catálogos", path: "/admin/catalogos" },
     { name: "Precios", path: "/admin/precios" },
-    { name: "Reportes", path: "/admin/reportes" },
     { name: "Usuarios y Cuentas", path: "/admin/usuarios-cuentas" },
     { name: "Perfil", path: "/perfil" },
   ],

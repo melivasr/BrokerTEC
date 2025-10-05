@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
-import empresaService from "../../services/empresaService";
+import * as empresaService from "../../services/empresaService";
 import { getWallet } from "../../services/walletService";
 
 export default function Portafolio() {

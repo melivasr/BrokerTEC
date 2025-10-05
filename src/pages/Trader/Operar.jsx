@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
-import empresaService from "../../services/empresaService";
+import * as empresaService from "../../services/empresaService";
 import { getWallet } from "../../services/walletService";
 
 export default function Operar() {

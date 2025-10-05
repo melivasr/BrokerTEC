@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { getCurrentUser } from "../../services/authService";
-import empresaService from "../../services/empresaService";
+import * as empresaService from "../../services/empresaService";
 
 export default function Seguridad() {
   const [user, setUser] = useState(null);

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import empresaService from "../../services/empresaService";
+import * as empresaService from "../../services/empresaService";
 import Sidebar from "../../components/Sidebar";
 
 export default function EmpresaDetalle() {

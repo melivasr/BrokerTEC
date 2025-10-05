@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from "recharts";
-import empresaService from "../../services/empresaService";
+import * as empresaService from "../../services/empresaService";
 
 export default function HomeTrader() {
   const [mercados, setMercados] = useState([]);
