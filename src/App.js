@@ -13,6 +13,8 @@ import Operar from './pages/Trader/Operar';
 import Seguridad from './pages/Trader/Seguridad';
 import Catalogos from './pages/Admin/Catalogos';
 import ReportesEmpresa from './pages/Analista/ReportesEmpresa';
+import ReportesUsuario from './pages/Analista/ReportesUsuario';
+import Estadisticas from './pages/Analista/Estadisticas';
 import Perfil from './pages/Common/Perfil';
 import Precios from './pages/Admin/Precios';
 import UsuariosCuentas from './pages/Admin/UsuariosCuentas';
@@ -48,6 +50,8 @@ function AppContent() {
         <Route path="/admin/precios" element={<Precios />} />
         <Route path="/admin/usuarios-cuentas" element={<UsuariosCuentas />} />
         <Route path="/analista/empresa" element={<ReportesEmpresa />} />
+        <Route path="/analista/usuario" element={<ReportesUsuario />} />
+        <Route path="/analista/estadisticas" element={<Estadisticas />} />
         {/* Perfil común */}
         <Route path="/perfil" element={<Perfil />} />
         <Route path="*" element={<Navigate to="/login" />} />
