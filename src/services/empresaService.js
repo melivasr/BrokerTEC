@@ -50,6 +50,7 @@ export async function cargarPreciosBatch(preciosBatch) {
 }
 
 // Trader funciones
+// HomeTrader: mercados habilitados y top empresas
 export async function getDetalleEmpresa(empresaId) {
 	return (await axios.get(`/api/empresas/${empresaId}`, { headers: authHeader() })).data;
 }
@@ -76,8 +77,8 @@ export async function comprarAcciones(empresaId, cantidad) {
 	 return res.data;
  }
  
- // Liquidar todas las posiciones del usuario
- export async function liquidarTodo({ usuario_id, password }) {
-	 const res = await axios.post('/api/usuario/liquidar-todo', { usuario_id, password });
-	 return res.data;
- }
+// Liquidar todas las posiciones del usuario
+export async function liquidarTodo({ id, password }) {
+	const res = await axios.post('/api/usuario/liquidar-todo', { id, password });
+	return res.data;
+}

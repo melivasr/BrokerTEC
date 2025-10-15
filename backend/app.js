@@ -3,6 +3,7 @@ import cors from "cors";
 import authRoutes from "./routes/authRoutes.js";
 import walletRoutes from "./routes/walletRoutes.js";
 import empresaRoutes from './routes/empresaRoutes.js';
+import homeTraderRoute from './routes/homeTraderRoute.js';
 
 const app = express();
 app.use(cors());
@@ -12,5 +13,6 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use('/api/empresas', empresaRoutes);
+app.use('/api/home-trader', homeTraderRoute);
 
 export default app;

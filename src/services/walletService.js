@@ -16,11 +16,11 @@ export async function getWallet() {
 }
 
 // Recargar wallet
-export async function recargarWallet(usuario_id, monto) {
+export async function recargarWallet(id, monto) {
   try {
     const response = await axios.post(
       `${API_URL}/recargar`,
-      { usuario_id, monto },
+      { id, monto },
       { headers: authHeader() }
     );
     return response.data;

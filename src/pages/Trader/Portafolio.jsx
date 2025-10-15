@@ -89,7 +89,7 @@ export default function Portafolio() {
                 <td>{p.precio_actual !== null ? `$${p.precio_actual}` : <span style={{ color: 'orange' }}>datos de precio no disponibles</span>}</td>
                 <td>{p.valor_actual !== null ? `$${p.valor_actual}` : <span style={{ color: 'orange' }}>datos de precio no disponibles</span>}</td>
                 <td>
-                  <button onClick={() => window.location.href = `/trader/operar?empresa=${p.empresa_id}`}>Comprar más</button>
+                  <button onClick={() => window.location.href = `/trader/operar/${p.empresa_id}`}>Comprar más</button>
                   <form style={{ display: 'inline', marginLeft: 8 }} onSubmit={e => { e.preventDefault(); handleVender(p.empresa_id); }}>
                     <input
                       type="number"

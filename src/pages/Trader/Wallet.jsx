@@ -36,13 +36,13 @@ export default function Wallet() {
     }
     setLoading(true);
     try {
-      const usuario_id = JSON.parse(localStorage.getItem('user'))?.usuario_id;
-      if (!usuario_id) {
+      const id = JSON.parse(localStorage.getItem('user'))?.id;
+      if (!id) {
         setError('No se encontró el usuario.');
         setLoading(false);
         return;
       }
-      await recargarWallet(usuario_id, Number(monto));
+      await recargarWallet(id, Number(monto));
       setSuccess('Recarga exitosa');
       setMonto("");
       const data = await getWallet(); // refrescar wallet

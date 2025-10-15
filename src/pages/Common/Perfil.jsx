@@ -29,8 +29,7 @@ export default function Perfil() {
   if (!user) return <div>Cargando perfil...</div>;
 
   // Validaciones
-  const validateEmail = (email) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
-  const validateAlias = (alias) => alias.length >= 3;
+  // ...
   const validatePassword = (pw) => pw.length >= 6 && /[A-Z]/.test(pw) && /[0-9]/.test(pw);
 
   // Actualizar datos personales
@@ -38,14 +37,6 @@ export default function Perfil() {
     e.preventDefault();
     setError("");
     setSuccess("");
-    if (!validateAlias(form.alias)) {
-      setError("Alias debe tener al menos 3 caracteres.");
-      return;
-    }
-    if (!validateEmail(form.correo)) {
-      setError("Correo inválido.");
-      return;
-    }
     try {
       await updateUser(form);
       setSuccess("Datos actualizados correctamente.");
@@ -60,7 +51,7 @@ export default function Perfil() {
   const handleDelete = async () => {
     if (!window.confirm("¿Seguro que deseas eliminar tu cuenta?")) return;
     try {
-      await deleteUser(user.usuario_id);
+      await deleteUser(user.id);
       setSuccess("Cuenta eliminada. Redirigiendo...");
       setTimeout(() => window.location.href = "/login", 2000);
     } catch (err) {
@@ -78,7 +69,7 @@ export default function Perfil() {
       return;
     }
     try {
-      await changePassword({ usuario_id: user.usuario_id, old: passwords.old, new: passwords.new });
+      await changePassword({ id: user.id, old: passwords.old, new: passwords.new });
       setPwSuccess("Contraseña cambiada correctamente.");
       setPasswords({ old: "", new: "" });
     } catch (err) {

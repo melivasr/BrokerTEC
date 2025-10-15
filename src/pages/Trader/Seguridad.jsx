@@ -32,7 +32,7 @@ export default function Seguridad() {
     setSuccess("");
     setLoading(true);
     try {
-      await empresaService.liquidarTodo({ usuario_id: user.usuario_id, password });
+  await empresaService.liquidarTodo({ id: user.id, password });
       setSuccess("Liquidación exitosa. Todas tus posiciones han sido vendidas.");
       setPassword("");
       setConfirming(false);

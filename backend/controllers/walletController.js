@@ -4,27 +4,21 @@ export async function getWallet(req, res) {
   const userId = req.user.id;
 
   try {
-    const wallet = await queryDB(
-      `SELECT w.wallet_id, w.saldo, c.nombre AS categoria, c.limite_diario, w.consumo_diario
-       FROM Wallet w
-       JOIN Categoria c ON w.categoria_id = c.categoria_id
-       WHERE w.usuario_id = @userId`,
+    // Obtener la billetera asociada al usuario según el schema actual (Billetera)
+    const billetera = await queryDB(
+      `SELECT b.id AS id, b.fondos AS saldo, b.categoria AS categoria, b.limite_diario AS limite_diario, b.consumo AS consumo
+       FROM Billetera b
+       JOIN Usuario u ON u.id_billetera = b.id
+       WHERE u.id = @userId`,
       { userId }
     );
 
-    if (!wallet.length) return res.status(404).json({ message: "Wallet no encontrado" });
+    if (!billetera || billetera.length === 0) return res.status(404).json({ message: "Billetera no encontrada" });
 
-    const recargas = await queryDB(
-      `SELECT recarga_id, monto, fecha_hora
-       FROM Recarga
-       WHERE wallet_id = @walletId
-       ORDER BY fecha_hora DESC`,
-      { walletId: wallet[0].wallet_id }
-    );
-
-    res.json({ ...wallet[0], recargas });
+    res.json(billetera[0]);
   } catch (error) {
-    res.status(500).json({ message: "Error al obtener wallet", error });
+    console.error('Error en getWallet:', error);
+    res.status(500).json({ message: "Error al obtener wallet", error: error.message });
   }
 }
 
@@ -33,17 +27,16 @@ export async function recargarWallet(req, res) {
   const { monto } = req.body;
 
   try {
-    // Validación de límite diario
-    // (puedes calcular sumatoria de recargas del día y compararla con limite_diario)
+    // Obtener id de la billetera
+    const bRes = await queryDB(`SELECT id FROM Billetera WHERE id IN (SELECT id_billetera FROM Usuario WHERE id = @userId)`, { userId });
+    if (!bRes || bRes.length === 0) return res.status(404).json({ message: 'Billetera no encontrada' });
+    const billeteraId = bRes[0].id;
 
-    await queryDB(
-      `INSERT INTO Recarga(wallet_id, monto)
-       VALUES ((SELECT wallet_id FROM Wallet WHERE usuario_id = @userId), @monto)`,
-      { userId, monto }
-    );
+    await queryDB(`UPDATE Billetera SET fondos = fondos + @monto WHERE id = @billeteraId`, { monto, billeteraId });
 
-    res.json({ message: "Recarga exitosa" });
+    res.json({ message: 'Recarga exitosa' });
   } catch (error) {
-    res.status(500).json({ message: "Error al recargar", error });
+    console.error('Error en recargarWallet:', error);
+    res.status(500).json({ message: 'Error al recargar', error: error.message });
   }
 }

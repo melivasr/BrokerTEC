@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getUsuarios, getUsuarioCuentas, crearUsuario, editarUsuario, asignarCategoria, habilitarMercado, deshabilitarUsuario } from '../../services/userService';
+import { getUsuarios, getUsuarioCuentas, deshabilitarUsuario } from '../../services/userService';
 import { getTopWallet, getTopAcciones } from '../../services/reportService';
 import ErrorMessage from '../../components/ErrorMessage';
 import ModalConfirm from '../../components/ModalConfirm';
