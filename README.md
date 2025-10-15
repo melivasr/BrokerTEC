@@ -1,3 +1,28 @@
+# BrokerTEC
+
+BrokerTEC es una aplicación web que permite a usuarios comercian en la bolsa de valores. Más información en [el enunciado](Proyectos_CE_3101_S2_2025_Proyecto_1.pdf)
+
+## Backend
+
+Para correr el backend, se necesita `nodejs`. Para la base de datos, se necesita `docker` (o `podman`) y `docker-compose` (o `podman-compose`) si se corre en linux.
+
+Configure `docker` o `podman`. Luego de clonar e ingresar al repositorio, inicialize la base de datos:
+
+```
+docker compose down -v && docker compose up --build
+```
+
+En windows, con SQL Server Studio, crear base de datos `BrokerTec` y usar [schema.sql](db/schema.sql) y [seed.sql](db/seed.sql) para generar datos semilla.
+
+Luego inicie el servidor con `nodejs`:
+
+```
+cd backend
+node server.js
+```
+
+# Frontend
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).

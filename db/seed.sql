@@ -117,8 +117,22 @@ INSERT INTO Mercado_Habilitado (id_mercado, id_usuario) VALUES
 -- Inventario
 -- ===============================
 INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio) VALUES
-(SELECT id, 1000, 500, 150.00 FROM Empresa WHERE nombre='Apple Inc.'),
-(SELECT id, 2000, 1500, 280.50 FROM Empresa WHERE nombre='Microsoft Corp.'),
-(SELECT id, 1500, 700, 800.00 FROM Empresa WHERE nombre='Tesla Inc.'),
-(SELECT id, 5000, 3000, 12.75 FROM Empresa WHERE nombre='Ford Motor Co.'),
-(SELECT id, 8000, 4000, 5.60 FROM Empresa WHERE nombre='BP PLC');
+((SELECT id FROM Empresa WHERE nombre='Apple Inc.'), 1000, 500, 150.00),
+((SELECT id FROM Empresa WHERE nombre='Microsoft Corp.'), 2000, 1500, 280.50),
+((SELECT id FROM Empresa WHERE nombre='Tesla Inc.'), 1500, 700, 800.00),
+((SELECT id FROM Empresa WHERE nombre='Ford Motor Co.'), 5000, 3000, 12.75),
+((SELECT id FROM Empresa WHERE nombre='BP PLC'), 8000, 4000, 5.60);
+-- INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
+-- SELECT id, 1000, 500, 150.00 FROM Empresa WHERE nombre='Apple Inc.';
+-- 
+-- INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
+-- SELECT id, 2000, 1500, 280.50 FROM Empresa WHERE nombre='Microsoft Corp.';
+-- 
+-- INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
+-- SELECT id, 1500, 700, 800.00 FROM Empresa WHERE nombre='Tesla Inc.';
+-- 
+-- INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
+-- SELECT id, 5000, 3000, 12.75 FROM Empresa WHERE nombre='Ford Motor Co.';
+-- 
+-- INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
+-- SELECT id, 8000, 4000, 5.60 FROM Empresa WHERE nombre='BP PLC';
