@@ -5,7 +5,6 @@ const options = {
   Admin: [
     { name: "Catálogos", path: "/admin/catalogos" },
     { name: "Precios", path: "/admin/precios" },
-    { name: "Reportes", path: "/admin/reportes" },
     { name: "Usuarios y Cuentas", path: "/admin/usuarios-cuentas" },
     { name: "Perfil", path: "/perfil" },
   ],
@@ -17,12 +16,9 @@ const options = {
   ],
   Trader: [
     { name: "Home", path: "/trader/home" },
-    { name: "Operar", path: "/trader/operar" },
     { name: "Portafolio", path: "/trader/portafolio" },
     { name: "Wallet", path: "/trader/wallet" },
     { name: "Seguridad", path: "/trader/seguridad" },
-  // Para navegación dinámica, puedes usar un ejemplo o dejar la opción para seleccionar empresa
-  { name: "Empresa Detalle", path: "/trader/empresa/1" },
     { name: "Perfil", path: "/perfil" },
   ],
 };
@@ -32,21 +28,30 @@ export default function Sidebar({ rol }) {
     <aside
       style={{
         width: 220,
-        background: "#f0f0f0",
+        background: "var(--sidebar-bg)",
         padding: 20,
         minHeight: "100vh",
         position: "fixed",
         top: 0,
         left: 0,
-        borderRight: "1px solid #ddd",
+        borderRight: "1px solid var(--sidebar-border)",
         zIndex: 100,
+        transition: "background 0.3s, border-color 0.3s",
       }}
     >
-      <h3>Opciones</h3>
+      <h3 style={{ color: "var(--text-color)" }}>Opciones</h3>
       <ul style={{ listStyle: "none", padding: 0 }}>
         {options[rol]?.map((opt) => (
           <li key={opt.path} style={{ margin: "16px 0" }}>
-            <Link to={opt.path}>{opt.name}</Link>
+            <Link
+              to={opt.path}
+              style={{
+                color: "var(--text-color)",
+                textDecoration: "none",
+              }}
+            >
+              {opt.name}
+            </Link>
           </li>
         ))}
       </ul>

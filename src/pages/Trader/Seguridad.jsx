@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { getCurrentUser } from "../../services/authService";
-import empresaService from "../../services/empresaService";
+import * as empresaService from "../../services/empresaService";
 
 export default function Seguridad() {
   const [user, setUser] = useState(null);
@@ -32,7 +32,7 @@ export default function Seguridad() {
     setSuccess("");
     setLoading(true);
     try {
-      await empresaService.liquidarTodo({ usuario_id: user.usuario_id, password });
+  await empresaService.liquidarTodo({ id: user.id, password });
       setSuccess("Liquidación exitosa. Todas tus posiciones han sido vendidas.");
       setPassword("");
       setConfirming(false);

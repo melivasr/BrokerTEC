@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
-import empresaService from "../../services/empresaService";
+import * as empresaService from "../../services/empresaService";
 import { getWallet } from "../../services/walletService";
 
 export default function Operar() {
   const [searchParams] = useSearchParams();
-  const empresaId = searchParams.get("empresa");
+  const { empresaId: empresaIdParam } = useParams();
+  // Preferir parámetro de ruta si está presente, si no usar query param
+  const empresaId = empresaIdParam || searchParams.get("empresa");
   const [empresa, setEmpresa] = useState(null);
   const [wallet, setWallet] = useState(null);
   const [cantidad, setCantidad] = useState("");
@@ -19,18 +21,40 @@ export default function Operar() {
     async function fetchData() {
       setError("");
       try {
+        if (!empresaId) {
+          setError('ID de empresa inválido');
+          return;
+        }
+        console.log('[Operar] fetchData - empresaId=', empresaId);
         const e = await empresaService.getDetalleEmpresa(empresaId);
+        console.log('[Operar] getDetalleEmpresa response=', e);
         setEmpresa(e.empresa);
-  const w = await getWallet();
+        const w = await getWallet();
+        console.log('[Operar] getWallet response=', w);
         setWallet(w);
       } catch (err) {
-        setError("Error al cargar datos");
+        const msg = err?.response?.data?.message || err?.message || 'Error al cargar datos';
+        setError(msg);
       }
     }
     fetchData();
   }, [empresaId]);
 
-  if (!empresa || !wallet) return <div>Cargando...</div>;
+  // Esperar hasta tener ambos datos (empresa y wallet). Si alguno falta, mostrar carga (o el error si existe).
+  if (!empresa || !wallet) {
+    if (error) {
+      return (
+        <div style={{ display: "flex" }}>
+          <Sidebar rol="Trader" />
+          <main style={{ padding: 24, width: "100%" }}>
+            <h2>Operar Empresa</h2>
+            <div style={{ color: 'red' }}>{error}</div>
+          </main>
+        </div>
+      );
+    }
+    return <div>Cargando...</div>;
+  }
 
   // Calcular máximo comprable
   const maxPorCash = Math.floor(wallet.saldo / empresa.precio_actual);
@@ -50,40 +74,59 @@ export default function Operar() {
       return;
     }
     if (accion === "Compra") {
-      if (maxComprable === 0) {
-        setError("Saldo insuficiente o inventario insuficiente");
+      if (!empresa.precio_actual) {
+        setError('inventario no disponible');
+        setLoading(false);
+        return;
+      }
+      if (maxComprable <= 0) {
+        setError('saldo insuficiente');
         setLoading(false);
         return;
       }
       if (cant > maxComprable) {
-        setError("No puede comprar más de lo permitido");
+        setError('inventario insuficiente');
         setLoading(false);
         return;
       }
       // Llamar al backend para comprar
       try {
-        await empresaService.comprarAcciones(empresaId, cant);
-        setSuccess("Compra realizada");
+        const res = await empresaService.comprarAcciones(empresaId, cant);
+        setSuccess(res?.message || 'Compra realizada');
+        setCantidad('');
+        // refrescar datos
+        const e = await empresaService.getDetalleEmpresa(empresaId);
+        setEmpresa(e.empresa);
+        const w = await getWallet();
+        setWallet(w);
       } catch (err) {
-        setError(err?.message || "Error en la compra");
+        const msg = err?.response?.data?.message || err?.message || 'Error en la compra';
+        setError(msg);
       }
     } else {
       if (maxVendible === 0) {
-        setError("Posición insuficiente");
+        setError('posición insuficiente');
         setLoading(false);
         return;
       }
       if (cant > maxVendible) {
-        setError("No puede vender más de lo que tiene");
+        setError('posición insuficiente');
         setLoading(false);
         return;
       }
       // Llamar al backend para vender
       try {
-        await empresaService.venderAcciones(empresaId, cant);
-        setSuccess("Venta realizada");
+        const res = await empresaService.venderAcciones(empresaId, cant);
+        setSuccess(res?.message || 'Venta realizada');
+        setCantidad('');
+        // refrescar datos
+        const e = await empresaService.getDetalleEmpresa(empresaId);
+        setEmpresa(e.empresa);
+        const w = await getWallet();
+        setWallet(w);
       } catch (err) {
-        setError(err?.message || "Error en la venta");
+        const msg = err?.response?.data?.message || err?.message || 'Error en la venta';
+        setError(msg);
       }
     }
     setLoading(false);

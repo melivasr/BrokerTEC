@@ -1,113 +1,124 @@
--- ============================================================
--- SEED DATA
--- ============================================================
-
--- Categorías
-INSERT INTO Categoria (nombre, limite_diario) VALUES
-('General', 1000),
-('Premium', 5000),
-('Ilimitada', 999999);
-
+-- ===============================
 -- Mercados
-INSERT INTO Mercado (nombre, estado) VALUES
-('NYSE', 'Activo'),
-('NASDAQ', 'Activo'),
-('BME', 'Activo');
+-- ===============================
+INSERT INTO Mercado (id, nombre) VALUES
+(NEWID(), 'NASDAQ'),
+(NEWID(), 'NYSE'),
+(NEWID(), 'LSE'),
+(NEWID(), 'TSX'),
+(NEWID(), 'JPX');
 
--- Usuarios
-INSERT INTO Usuario (alias, nombre, direccion, pais_origen, telefono, correo, contrasena_hash, rol, estado) VALUES
-('admin1', N'Administrador General', N'San José', N'Costa Rica', N'8888-8888', 'admin@example.com', 'hash_admin', 'Admin', 'Activo'),
-('trader1', N'Juan Pérez', N'Heredia', N'Costa Rica', N'7777-7777', 'trader1@example.com', 'hash_trader1', 'Trader', 'Activo'),
-('trader2', N'Ana Rodríguez', N'Alajuela', N'Costa Rica', N'6666-6666', 'trader2@example.com', 'hash_trader2', 'Trader', 'Activo'),
-('analista1', N'María Gómez', N'Cartago', N'Costa Rica', N'5555-5555', 'analista1@example.com', 'hash_analista1', 'Analista', 'Activo');
+-- IDs para FK
+DECLARE @id_nasdaq UNIQUEIDENTIFIER = (SELECT id FROM Mercado WHERE nombre='NASDAQ');
+DECLARE @id_nyse UNIQUEIDENTIFIER   = (SELECT id FROM Mercado WHERE nombre='NYSE');
+DECLARE @id_lse UNIQUEIDENTIFIER    = (SELECT id FROM Mercado WHERE nombre='LSE');
+DECLARE @id_tsx UNIQUEIDENTIFIER    = (SELECT id FROM Mercado WHERE nombre='TSX');
+DECLARE @id_jpx UNIQUEIDENTIFIER    = (SELECT id FROM Mercado WHERE nombre='JPX');
 
--- Wallets
-INSERT INTO Wallet (usuario_id, saldo, categoria_id, consumo_diario) VALUES
-(1, 50000, 3, 0),
-(2, 15000, 2, 0),
-(3, 8000, 1, 0),
-(4, 3000, 1, 0);
-
+-- ===============================
 -- Empresas
-INSERT INTO Empresa (nombre, mercado_id, ticker, cantidad_acciones_totales, acciones_disponibles, precio_accion, capitalizacion) VALUES
-(N'Apple Inc.', 2, 'AAPL', 1000000, 600000, 180.50, 180500000),
-(N'Microsoft Corp.', 2, 'MSFT', 2000000, 1400000, 310.20, 620400000),
-(N'Tesla Inc.', 2, 'TSLA', 1500000, 1000000, 250.10, 375150000),
-(N'Coca-Cola', 1, 'KO', 1200000, 700000, 60.25, 72300000),
-(N'JP Morgan', 1, 'JPM', 1800000, 1200000, 140.80, 253440000),
-(N'Iberdrola', 3, 'IBE', 900000, 700000, 12.30, 11070000),
-(N'Santander', 3, 'SAN', 1000000, 800000, 3.75, 3750000);
+-- ===============================
+INSERT INTO Empresa (id, id_mercado, nombre, ticker) VALUES
+-- NASDAQ
+(NEWID(), @id_nasdaq, 'Apple Inc.', 'AAPL  '),
+(NEWID(), @id_nasdaq, 'Microsoft Corp.', 'MSFT  '),
+(NEWID(), @id_nasdaq, 'Tesla Inc.', 'TSLA  '),
+(NEWID(), @id_nasdaq, 'Amazon.com', 'AMZN  '),
+(NEWID(), @id_nasdaq, 'Alphabet Inc.', 'GOOGL '),
 
--- Sectores
-INSERT INTO Sector (nombre) VALUES
-('Tecnología'),
-('Energía'),
-('Finanzas'),
-('Consumo'),
-('Salud');
+-- NYSE
+(NEWID(), @id_nyse, 'Ford Motor Co.', 'F     '),
+(NEWID(), @id_nyse, 'General Electric', 'GE    '),
+(NEWID(), @id_nyse, 'Coca-Cola', 'KO    '),
+(NEWID(), @id_nyse, 'IBM', 'IBM   '),
+(NEWID(), @id_nyse, 'PepsiCo', 'PEP   '),
 
--- Empresa_Sector
-INSERT INTO Empresa_Sector (empresa_id, sector_id) VALUES
-(1, 1), -- Apple -> Tecnología
-(2, 1), -- Microsoft -> Tecnología
-(3, 1), -- Tesla -> Tecnología
-(4, 4), -- Coca-Cola -> Consumo
-(5, 3), -- JP Morgan -> Finanzas
-(6, 2), -- Iberdrola -> Energía
-(7, 3); -- Santander -> Finanzas
+-- LSE
+(NEWID(), @id_lse, 'BP PLC', 'BP    '),
+(NEWID(), @id_lse, 'HSBC Holdings', 'HSBC  '),
+(NEWID(), @id_lse, 'Unilever', 'ULVR  '),
+(NEWID(), @id_lse, 'Barclays', 'BARC  '),
+(NEWID(), @id_lse, 'GlaxoSmithKline', 'GSK   '),
 
--- Usuario_Mercado
-INSERT INTO Usuario_Mercado (usuario_id, mercado_id, habilitado_por) VALUES
-(2, 2, 1),
-(2, 1, 1),
-(3, 3, 1),
-(4, 2, 1);
+-- TSX
+(NEWID(), @id_tsx, 'Shopify', 'SHOP  '),
+(NEWID(), @id_tsx, 'Royal Bank of Canada', 'RY    '),
+(NEWID(), @id_tsx, 'TD Bank', 'TD    '),
+(NEWID(), @id_tsx, 'Enbridge', 'ENB   '),
+(NEWID(), @id_tsx, 'BCE Inc.', 'BCE   '),
 
--- Recargas
-INSERT INTO Recarga (wallet_id, monto) VALUES
-(2, 5000),
-(3, 2000),
-(4, 1000);
+-- JPX
+(NEWID(), @id_jpx, 'Toyota Motor', '7203  '),
+(NEWID(), @id_jpx, 'Sony Corp.', '6758  '),
+(NEWID(), @id_jpx, 'Nintendo', '7974  '),
+(NEWID(), @id_jpx, 'SoftBank', '9984  '),
+(NEWID(), @id_jpx, 'Mitsubishi UFJ', '8306  ');
 
--- Precios históricos (ejemplo fijo de 5 días atrás)
-DECLARE @i INT = 0;
-WHILE @i < 5
-BEGIN
-  DECLARE @fecha DATETIME2(3) = DATEADD(DAY, -@i, SYSUTCDATETIME());
-  INSERT INTO Precio_Historico (empresa_id, ts_utc, precio) VALUES
-  (1, @fecha, 180.00 + RAND()*5),
-  (2, @fecha, 310.00 + RAND()*5),
-  (3, @fecha, 250.00 + RAND()*5),
-  (4, @fecha, 60.00 + RAND()*2),
-  (5, @fecha, 140.00 + RAND()*3),
-  (6, @fecha, 12.00 + RAND()*1),
-  (7, @fecha, 3.50 + RAND()*0.5);
-  SET @i += 1;
-END
+-- ===============================
+-- Billeteras
+-- ===============================
+INSERT INTO Billetera (id, categoria, fondos, limite_diario, consumo) VALUES
+-- Junior
+(NEWID(), 'Junior', 1000.00, 500.00, 0.00),
+(NEWID(), 'Junior', 1200.00, 600.00, 0.00),
+(NEWID(), 'Junior', 800.00, 400.00, 0.00),
 
--- Posiciones
-INSERT INTO Posicion (usuario_id, empresa_id, cantidad, costo_promedio) VALUES
-(2, 1, 50, 178.00),
-(2, 3, 20, 240.00),
-(3, 6, 100, 11.50);
+-- Mid
+(NEWID(), 'Mid', 5000.00, 2000.00, 0.00),
+(NEWID(), 'Mid', 6000.00, 2500.00, 0.00),
+(NEWID(), 'Mid', 5500.00, 2200.00, 0.00),
 
--- Operaciones
-INSERT INTO Operacion (usuario_id, empresa_id, lado, cantidad, precio, nota) VALUES
-(2, 1, 'B', 50, 178.00, N'Compra inicial Apple'),
-(2, 3, 'B', 20, 240.00, N'Compra Tesla'),
-(3, 6, 'B', 100, 11.50, N'Compra Iberdrola'),
-(2, 1, 'S', 10, 182.00, N'Venta parcial Apple');
+-- Senior
+(NEWID(), 'Senior', 20000.00, 10000.00, 0.00),
+(NEWID(), 'Senior', 18000.00, 9000.00, 0.00),
+(NEWID(), 'Senior', 22000.00, 11000.00, 0.00);
 
--- Acciones (resumen)
-INSERT INTO Acciones (id_usuario, id_empresa, acciones, valor) VALUES
-(2, 1, 40, 180.50*40),
-(2, 3, 20, 250.10*20),
-(3, 6, 100, 12.30*100);
+-- ===============================
+-- Portafolios (1 por empresa por usuario)
+-- ===============================
+INSERT INTO Portafolio (id, id_empresa, acciones) VALUES
+-- Ejemplo para algunos usuarios
+(NEWID(), (SELECT TOP 1 id FROM Empresa WHERE nombre='Apple Inc.'), 50),
+(NEWID(), (SELECT TOP 1 id FROM Empresa WHERE nombre='Microsoft Corp.'), 30),
+(NEWID(), (SELECT TOP 1 id FROM Empresa WHERE nombre='Tesla Inc.'), 40),
+(NEWID(), (SELECT TOP 1 id FROM Empresa WHERE nombre='Ford Motor Co.'), 100),
+(NEWID(), (SELECT TOP 1 id FROM Empresa WHERE nombre='BP PLC'), 200);
 
--- Configuración de la App
-INSERT INTO App_Setting (clave, valor) VALUES
-('version', N'1.0.0'),
-('modo', N'desarrollo'),
-('max_operaciones_diarias', N'100');
+-- ===============================
+-- Usuarios
+-- ===============================
+INSERT INTO Usuario (id, id_billetera, id_portafolio, nombre, alias, habilitado, direccion, pais_origen, telefono, correo, rol, contrasena_hash) VALUES
+-- Traders
+(NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Junior'), (SELECT TOP 1 id FROM Portafolio WHERE acciones=50), 'Juan Pérez', 'juanp', 1, 'San José, Costa Rica', 'Costa Rica', '+50688889999', 'juan@example.com', 'Trader', 'hash1'),
+(NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Junior'), (SELECT TOP 1 id FROM Portafolio WHERE acciones=30), 'Ana Gómez', 'anag', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50687771122', 'ana@example.com', 'Trader', 'hash2'),
+(NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Mid'), (SELECT TOP 1 id FROM Portafolio WHERE acciones=40), 'Luis Fernández', 'luisf', 1, 'Heredia, Costa Rica', 'Costa Rica', '+50686662233', 'luis@example.com', 'Trader', 'hash3'),
 
-GO
+-- Analistas
+(NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Mid'), NULL, 'María López', 'marial', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50687776655', 'maria@example.com', 'Analista', 'hash4'),
+(NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Mid'), NULL, 'Carlos Ruiz', 'carlosr', 1, 'Heredia, Costa Rica', 'Costa Rica', '+50686663344', 'carlos@example.com', 'Analista', 'hash5'),
+
+-- Admins
+(NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Senior'), NULL, 'Carmen Soto', 'carmens', 1, 'San José, Costa Rica', 'Costa Rica', '+50685554433', 'carmen@example.com', 'Admin', 'hash6'),
+(NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Senior'), NULL, 'Diego Vargas', 'diegov', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50684443322', 'diego@example.com', 'Admin', 'hash7');
+
+-- ===============================
+-- Mercado_Habilitado
+-- ===============================
+-- Asignar usuarios a mercados aleatoriamente
+INSERT INTO Mercado_Habilitado (id_mercado, id_usuario) VALUES
+(@id_nasdaq, (SELECT id FROM Usuario WHERE alias='juanp')),
+(@id_nasdaq, (SELECT id FROM Usuario WHERE alias='marial')),
+(@id_nyse,   (SELECT id FROM Usuario WHERE alias='carlosr')),
+(@id_lse,   (SELECT id FROM Usuario WHERE alias='carmens')),
+(@id_tsx,   (SELECT id FROM Usuario WHERE alias='diegov')),
+(@id_jpx,   (SELECT id FROM Usuario WHERE alias='luisf'));
+
+-- ===============================
+-- Inventario
+-- ===============================
+INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio) VALUES
+(SELECT id, 1000, 500, 150.00 FROM Empresa WHERE nombre='Apple Inc.'),
+(SELECT id, 2000, 1500, 280.50 FROM Empresa WHERE nombre='Microsoft Corp.'),
+(SELECT id, 1500, 700, 800.00 FROM Empresa WHERE nombre='Tesla Inc.'),
+(SELECT id, 5000, 3000, 12.75 FROM Empresa WHERE nombre='Ford Motor Co.'),
+(SELECT id, 8000, 4000, 5.60 FROM Empresa WHERE nombre='BP PLC');

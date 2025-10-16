@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
-import empresaService from "../../services/empresaService";
+import * as empresaService from "../../services/empresaService";
 import { getWallet } from "../../services/walletService";
 
 export default function Portafolio() {
@@ -89,7 +89,7 @@ export default function Portafolio() {
                 <td>{p.precio_actual !== null ? `$${p.precio_actual}` : <span style={{ color: 'orange' }}>datos de precio no disponibles</span>}</td>
                 <td>{p.valor_actual !== null ? `$${p.valor_actual}` : <span style={{ color: 'orange' }}>datos de precio no disponibles</span>}</td>
                 <td>
-                  <button onClick={() => window.location.href = `/trader/operar?empresa=${p.empresa_id}`}>Comprar más</button>
+                  <button onClick={() => window.location.href = `/trader/operar/${p.empresa_id}`}>Comprar más</button>
                   <form style={{ display: 'inline', marginLeft: 8 }} onSubmit={e => { e.preventDefault(); handleVender(p.empresa_id); }}>
                     <input
                       type="number"
