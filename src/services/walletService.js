@@ -11,7 +11,8 @@ export async function getWallet() {
     });
     return response.data;
   } catch (error) {
-    throw error.response?.data?.message || "Error al obtener el wallet";
+    // Lanzar el objeto error para que el frontend pueda leer response.data (message/error)
+    throw error;
   }
 }
 
@@ -25,6 +26,7 @@ export async function recargarWallet(id, monto) {
     );
     return response.data;
   } catch (error) {
-    throw error.response?.data?.message || "Error al recargar el wallet";
+    // Lanzar el error completo para que la UI muestre el detalle proporcionado por el backend
+    throw error;
   }
 }

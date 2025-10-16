@@ -16,7 +16,6 @@ const options = {
   ],
   Trader: [
     { name: "Home", path: "/trader/home" },
-    { name: "Operar", path: "/trader/operar" },
     { name: "Portafolio", path: "/trader/portafolio" },
     { name: "Wallet", path: "/trader/wallet" },
     { name: "Seguridad", path: "/trader/seguridad" },

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getWallet, recargarWallet } from "../../services/walletService";
+import Sidebar from "../../components/Sidebar";
 
 export default function Wallet() {
   const [wallet, setWallet] = useState(null);
@@ -9,29 +10,34 @@ export default function Wallet() {
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    async function fetchWallet() {
-      try {
-        const data = await getWallet();
-        setWallet(data);
-      } catch (err) {
-        setError(err);
+      async function fetchWallet() {
+        try {
+          const data = await getWallet();
+          setWallet(data);
+        } catch (err) {
+          // err puede ser string o Error. Preferir campo 'error' (detalle) si viene del backend para depuración
+            setError(err?.response?.data?.error || err?.response?.data?.message || err?.message || String(err));
+        }
       }
-    }
-    fetchWallet();
+      fetchWallet();
   }, []);
 
   const handleRecargar = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    if (!monto || isNaN(monto) || Number(monto) <= 0) {
-      setError("Monto inválido");
+      if (!monto || isNaN(monto) || Number(monto) <= 0) {
+        setError("monto inválido");
       return;
     }
     // Validar límite diario
-    const limiteRestante = wallet.limite_diario - wallet.consumo_diario;
-    if (Number(monto) > limiteRestante) {
-      setError("Se alcanzó el límite diario");
+      if (!wallet) {
+        setError('No se pudo obtener la wallet');
+        return;
+      }
+      const limiteRestante = wallet.limite_diario - wallet.consumo_diario;
+      if (Number(monto) > limiteRestante) {
+        setError("se alcanzó el límite diario");
       return;
     }
     setLoading(true);
@@ -48,13 +54,16 @@ export default function Wallet() {
       const data = await getWallet(); // refrescar wallet
       setWallet(data);
     } catch (err) {
-      setError('Error al recargar: ' + (err?.message || 'Intente de nuevo'));
+        const msg = err?.response?.data?.error || err?.response?.data?.message || err?.message || String(err);
+        setError(msg);
     }
     setLoading(false);
   };
 
   return (
     <div style={{ maxWidth: 500, margin: '0 auto', padding: 24, background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px #eee' }}>
+      <Sidebar rol="Trader" />
+            <main style={{ padding: 24, width: "90%" }}>
       <h2>Mi Wallet</h2>
       {error && <div style={{ color: 'red', marginBottom: 10 }}>{error}</div>}
       {success && <div style={{ color: 'green', marginBottom: 10 }}>{success}</div>}
@@ -80,7 +89,7 @@ export default function Wallet() {
               type="number"
               min="1"
               max={wallet.limite_diario - wallet.consumo_diario}
-              step="0.01"
+              step="1"
               value={monto}
               onChange={e => setMonto(e.target.value)}
               placeholder={`Máximo: $${(wallet.limite_diario - wallet.consumo_diario).toFixed(2)}`}
@@ -98,6 +107,7 @@ export default function Wallet() {
       ) : (
         <p>Cargando wallet...</p>
       )}
+      </main>
     </div>
   );
 }
