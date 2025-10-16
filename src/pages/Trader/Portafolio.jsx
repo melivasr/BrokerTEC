@@ -21,9 +21,11 @@ export default function Portafolio() {
         setPosiciones(data.posiciones);
   const w = await getWallet();
         setWallet(w);
-      } catch (err) {
-        setError(err?.message || "Error al cargar portafolio");
-      }
+  } catch (err) {
+  console.error('Error loading portafolio:', err);
+  const msg = err?.response?.data?.message || err?.message || 'Error al cargar portafolio';
+  setError(msg);
+  }
       setLoading(false);
     }
     fetchData();
@@ -47,7 +49,9 @@ export default function Portafolio() {
   const w = await getWallet();
       setWallet(w);
     } catch (err) {
-      setError(err?.message || "Error en la venta");
+      console.error('Error en handleVender:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Error en la venta';
+      setError(msg);
     }
   };
 
@@ -100,7 +104,17 @@ export default function Portafolio() {
                       style={{ width: 60 }}
                       placeholder="Vender"
                     />
-                    <button type="submit">Vender</button>
+                    <button
+                      type="submit"
+                      disabled={
+                        !cantidadVenta[p.empresa_id] ||
+                        Number(cantidadVenta[p.empresa_id]) <= 0 ||
+                        Number(cantidadVenta[p.empresa_id]) > Number(p.cantidad)
+                      }
+                    >Vender</button>
+                    {cantidadVenta[p.empresa_id] && Number(cantidadVenta[p.empresa_id]) > Number(p.cantidad) && (
+                      <div style={{ color: 'orange', fontSize: 12 }}>Cantidad superior a la posición</div>
+                    )}
                   </form>
                 </td>
               </tr>

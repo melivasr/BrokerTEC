@@ -214,17 +214,19 @@ export async function venderAcciones(req, res) {
         await transaction.begin();
         const request = new sql.Request(transaction);
 
-        // 1) obtener portafolio del usuario para esa empresa
-        const portRes = await request.query(`SELECT p.id, p.acciones, p.id_portafolio FROM Portafolio p JOIN Usuario u ON u.id_portafolio = p.id WHERE p.id_empresa='${id}' AND u.id='${user.id}'`);
-        if (!portRes.recordset || portRes.recordset.length === 0) {
+        // 1) determinar posición del usuario para esa empresa usando Transaccion (por alias)
+        // esto permite que la posición se calcule incluso si la tabla Portafolio no está vinculada correctamente
+        const aliasRes = await request.query(`SELECT alias FROM Usuario WHERE id='${user.id}'`);
+        const alias = aliasRes.recordset[0]?.alias;
+        const posRes = await request.query(`SELECT SUM(CASE WHEN tipo='Compra' THEN cantidad WHEN tipo='Venta' THEN -cantidad ELSE 0 END) AS cantidad_net FROM Transaccion WHERE alias='${alias}' AND id_empresa='${id}'`);
+        const posicionUsuario = Number(posRes.recordset[0]?.cantidad_net || 0);
+        if (posicionUsuario <= 0 || posicionUsuario < cantidad) {
             await transaction.rollback();
             return res.status(400).json({ message: 'posición insuficiente' });
         }
-        const port = portRes.recordset[0];
-        if (Number(port.acciones) < cantidad) {
-            await transaction.rollback();
-            return res.status(400).json({ message: 'posición insuficiente' });
-        }
+        // intentar obtener fila de Portafolio vinculada al usuario para actualizarla (si existe)
+        const portRes = await request.query(`SELECT p.id, p.acciones FROM Portafolio p JOIN Usuario u ON u.id_portafolio = p.id WHERE p.id_empresa='${id}' AND u.id='${user.id}'`);
+        const port = (portRes.recordset && portRes.recordset.length > 0) ? portRes.recordset[0] : null;
 
         // 2) obtener inventario y precio
         const invRes = await request.query(`SELECT precio FROM Inventario WHERE id_empresa='${id}'`);
@@ -234,8 +236,15 @@ export async function venderAcciones(req, res) {
         }
         const precio = Number(invRes.recordset[0].precio);
 
-        // 3) actualizar portafolio, inventario y billetera (sumar funds)
-        await request.query(`UPDATE Portafolio SET acciones = acciones - ${cantidad} WHERE id='${port.id}'`);
+        // 3) actualizar portafolio (si existe), inventario y billetera (sumar funds)
+        if (port) {
+            await request.query(`UPDATE Portafolio SET acciones = acciones - ${cantidad} WHERE id='${port.id}'`);
+        } else {
+            // No hay fila en Portafolio vinculada al usuario: saltamos la actualización de Portafolio porque
+            // la posición se está obteniendo de Transaccion. Esto evita fallos cuando Usuario.id_portafolio
+            // fue sobrescrito por compras posteriores.
+            console.warn('No se encontró fila de Portafolio vinculada al usuario para la empresa', id);
+        }
         await request.query(`UPDATE Inventario SET acciones_disponibles = acciones_disponibles + ${cantidad} WHERE id_empresa='${id}'`);
         // sumar fondos al usuario
         const billeteraRes = await request.query(`SELECT b.id FROM Usuario u JOIN Billetera b ON u.id_billetera = b.id WHERE u.id='${user.id}'`);

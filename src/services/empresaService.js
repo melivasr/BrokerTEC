@@ -31,8 +31,8 @@ export async function delistarEmpresa(id, justificacion) {
 
 // Precios
  export async function venderAcciones(empresaId, cantidad) {
-	 const res = await axios.post(`/api/empresas/${empresaId}/vender`, { cantidad });
-	 return res.data;
+ 	 const res = await axios.post(`/api/empresas/${empresaId}/vender`, { cantidad }, { headers: authHeader() });
+ 	 return res.data;
  }
 
 // Precios y carga
@@ -66,7 +66,7 @@ export async function comprarAcciones(empresaId, cantidad) {
  
  // Portafolio del usuario
  export async function getPortafolio() {
-	 const res = await axios.get('/api/portafolio');
+	 const res = await axios.get('/api/portafolio', { headers: authHeader() });
 	 return res.data;
  }
 
