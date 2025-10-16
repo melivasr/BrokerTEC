@@ -31,8 +31,8 @@ export async function delistarEmpresa(id, justificacion) {
 
 // Precios
  export async function venderAcciones(empresaId, cantidad) {
-	 const res = await axios.post(`/api/empresas/${empresaId}/vender`, { cantidad });
-	 return res.data;
+ 	 const res = await axios.post(`/api/empresas/${empresaId}/vender`, { cantidad }, { headers: authHeader() });
+ 	 return res.data;
  }
 
 // Precios y carga
@@ -50,6 +50,7 @@ export async function cargarPreciosBatch(preciosBatch) {
 }
 
 // Trader funciones
+// HomeTrader: mercados habilitados y top empresas
 export async function getDetalleEmpresa(empresaId) {
 	return (await axios.get(`/api/empresas/${empresaId}`, { headers: authHeader() })).data;
 }
@@ -65,7 +66,7 @@ export async function comprarAcciones(empresaId, cantidad) {
  
  // Portafolio del usuario
  export async function getPortafolio() {
-	 const res = await axios.get('/api/portafolio');
+	 const res = await axios.get('/api/portafolio', { headers: authHeader() });
 	 return res.data;
  }
 
@@ -76,8 +77,8 @@ export async function comprarAcciones(empresaId, cantidad) {
 	 return res.data;
  }
  
- // Liquidar todas las posiciones del usuario
- export async function liquidarTodo({ usuario_id, password }) {
-	 const res = await axios.post('/api/usuario/liquidar-todo', { usuario_id, password });
-	 return res.data;
- }
+// Liquidar todas las posiciones del usuario
+export async function liquidarTodo({ id, password }) {
+	const res = await axios.post('/api/usuario/liquidar-todo', { id, password });
+	return res.data;
+}

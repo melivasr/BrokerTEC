@@ -57,14 +57,7 @@ const Precios = () => {
   };
 
   // Ejemplo para carga por API (batch)
-  const handleCargaBatch = async (preciosBatch) => {
-    try {
-      await cargarPreciosBatch(preciosBatch);
-      fetchEmpresas();
-    } catch (err) {
-      setError('auth fallida');
-    }
-  };
+
 
   return (
     <div style={{ display: 'flex' }}>

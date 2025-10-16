@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getMercados, createMercado, updateMercado, deleteMercado } from '../../services/empresaService';
-import { getEmpresas, createEmpresa, updateEmpresa, delistarEmpresa } from '../../services/empresaService';
+import { getMercados } from '../../services/empresaService';
+import { getEmpresas, delistarEmpresa } from '../../services/empresaService';
 import DataTable from '../../components/DataTable';
 import ModalConfirm from '../../components/ModalConfirm';
 import ErrorMessage from '../../components/ErrorMessage';

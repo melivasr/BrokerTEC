@@ -18,7 +18,7 @@ import Estadisticas from './pages/Analista/Estadisticas';
 import Perfil from './pages/Common/Perfil';
 import Precios from './pages/Admin/Precios';
 import UsuariosCuentas from './pages/Admin/UsuariosCuentas';
-
+import ThemeToggleButton from "./components/ThemeToggleButton";
 
 
 function AppContent() {
@@ -44,7 +44,7 @@ function AppContent() {
         <Route path="/trader/wallet" element={<Wallet />} />
         <Route path="/trader/portafolio" element={<Portafolio />} />
         <Route path="/trader/empresa/:empresaId" element={<EmpresaDetalle />} />
-        <Route path="/trader/operar" element={<Operar />} />
+  <Route path="/trader/operar/:empresaId?" element={<Operar />} />
         <Route path="/trader/seguridad" element={<Seguridad />} />
         <Route path="/admin/catalogos" element={<Catalogos />} />
         <Route path="/admin/precios" element={<Precios />} />
@@ -56,6 +56,7 @@ function AppContent() {
         <Route path="/perfil" element={<Perfil />} />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
+      <ThemeToggleButton />
     </div>
   );
 }

@@ -1,168 +1,182 @@
-import { queryDB } from '../config/db.js';
-import bcrypt from 'bcryptjs';
 
-export default async function seedData() {
+// seedData.js
+import bcrypt from "bcryptjs";
+import { queryDB } from "../config/db.js";
+
+async function seedData() {
+
   try {
-    // 1. Categorías
+    console.log("🌱 Iniciando inserción de datos iniciales...");
+
+    // === 1. MERCADOS ===
     await queryDB(`
-      INSERT INTO Categoria (nombre, limite_diario) VALUES
-      ('General', 1000),
-      ('Premium', 5000),
-      ('Ilimitada', 999999);
+      INSERT INTO Mercado (id, nombre) VALUES
+        (NEWID(), 'NASDAQ'),
+        (NEWID(), 'NYSE'),
+        (NEWID(), 'LSE'),
+        (NEWID(), 'TSX'),
+        (NEWID(), 'JPX');
     `);
+    console.log(" Datos insertados en Mercado");
 
-    // 2. Mercados
+    // Obtener los IDs de los mercados
+    const mercados = await queryDB(`SELECT id, nombre FROM Mercado`);
+    const id_nasdaq = mercados.find(m => m.nombre === 'NASDAQ').id;
+    const id_nyse  = mercados.find(m => m.nombre === 'NYSE').id;
+    const id_lse   = mercados.find(m => m.nombre === 'LSE').id;
+    const id_tsx   = mercados.find(m => m.nombre === 'TSX').id;
+    const id_jpx   = mercados.find(m => m.nombre === 'JPX').id;
+
+    // === 2. EMPRESAS ===
     await queryDB(`
-      INSERT INTO Mercado (nombre, estado) VALUES
-      ('NYSE', 'Activo'),
-      ('NASDAQ', 'Activo'),
-      ('BME', 'Activo');
-    `);
+      INSERT INTO Empresa (id, id_mercado, nombre, ticker) VALUES
+      -- NASDAQ
+      (NEWID(), '${id_nasdaq}', 'Apple Inc.', 'AAPL  '),
+      (NEWID(), '${id_nasdaq}', 'Microsoft Corp.', 'MSFT  '),
+      (NEWID(), '${id_nasdaq}', 'Tesla Inc.', 'TSLA  '),
+      (NEWID(), '${id_nasdaq}', 'Amazon.com', 'AMZN  '),
+      (NEWID(), '${id_nasdaq}', 'Alphabet Inc.', 'GOOGL '),
 
-    // 3. Usuarios (con contraseñas hasheadas)
-    const adminHash = await bcrypt.hash('admin123', 10);
-    const trader1Hash = await bcrypt.hash('trader123', 10);
-    const trader2Hash = await bcrypt.hash('trader456', 10);
-    const analista1Hash = await bcrypt.hash('analista123', 10);
+      -- NYSE
+      (NEWID(), '${id_nyse}', 'Ford Motor Co.', 'F     '),
+      (NEWID(), '${id_nyse}', 'General Electric', 'GE    '),
+      (NEWID(), '${id_nyse}', 'Coca-Cola', 'KO    '),
+      (NEWID(), '${id_nyse}', 'IBM', 'IBM   '),
+      (NEWID(), '${id_nyse}', 'PepsiCo', 'PEP   '),
+
+      -- LSE
+      (NEWID(), '${id_lse}', 'BP PLC', 'BP    '),
+      (NEWID(), '${id_lse}', 'HSBC Holdings', 'HSBC  '),
+      (NEWID(), '${id_lse}', 'Unilever', 'ULVR  '),
+      (NEWID(), '${id_lse}', 'Barclays', 'BARC  '),
+      (NEWID(), '${id_lse}', 'GlaxoSmithKline', 'GSK   '),
+
+      -- TSX
+      (NEWID(), '${id_tsx}', 'Shopify', 'SHOP  '),
+      (NEWID(), '${id_tsx}', 'Royal Bank of Canada', 'RY    '),
+      (NEWID(), '${id_tsx}', 'TD Bank', 'TD    '),
+      (NEWID(), '${id_tsx}', 'Enbridge', 'ENB   '),
+      (NEWID(), '${id_tsx}', 'BCE Inc.', 'BCE   '),
+
+      -- JPX
+      (NEWID(), '${id_jpx}', 'Toyota Motor', '7203  '),
+      (NEWID(), '${id_jpx}', 'Sony Corp.', '6758  '),
+      (NEWID(), '${id_jpx}', 'Nintendo', '7974  '),
+      (NEWID(), '${id_jpx}', 'SoftBank', '9984  '),
+      (NEWID(), '${id_jpx}', 'Mitsubishi UFJ', '8306  ');
+    `);
+    console.log("Datos insertados en Empresa");
+
+    // === 3. BILLETERAS ===
     await queryDB(`
-      INSERT INTO Usuario (alias, nombre, direccion, pais_origen, telefono, correo, contrasena_hash, rol, estado) VALUES
-      ('admin1', N'Administrador General', N'San José', N'Costa Rica', N'8888-8888', 'admin@example.com', '${adminHash}', 'Admin', 'Activo'),
-      ('trader1', N'Juan Pérez', N'Heredia', N'Costa Rica', N'7777-7777', 'trader1@example.com', '${trader1Hash}', 'Trader', 'Activo'),
-      ('trader2', N'Ana Rodríguez', N'Alajuela', N'Costa Rica', N'6666-6666', 'trader2@example.com', '${trader2Hash}', 'Trader', 'Activo'),
-      ('analista1', N'María Gómez', N'Cartago', N'Costa Rica', N'5555-5555', 'analista1@example.com', '${analista1Hash}', 'Analista', 'Activo');
-    `);
+      INSERT INTO Billetera (id, categoria, fondos, limite_diario, consumo) VALUES
+      -- Junior
+      (NEWID(), 'Junior', 1000.00, 500.00, 0.00),
+      (NEWID(), 'Junior', 1200.00, 600.00, 0.00),
+      (NEWID(), 'Junior', 800.00, 400.00, 0.00),
 
-    
-    // 4. Wallets
+      -- Mid
+      (NEWID(), 'Mid', 5000.00, 2000.00, 0.00),
+      (NEWID(), 'Mid', 6000.00, 2500.00, 0.00),
+      (NEWID(), 'Mid', 5500.00, 2200.00, 0.00),
+
+      -- Senior
+      (NEWID(), 'Senior', 20000.00, 10000.00, 0.00),
+      (NEWID(), 'Senior', 18000.00, 9000.00, 0.00),
+      (NEWID(), 'Senior', 22000.00, 11000.00, 0.00);
+    `);
+    console.log("Datos insertados en Billetera");
+
+    // === 4. PORTAFOLIOS ===
     await queryDB(`
-      INSERT INTO Wallet (usuario_id, saldo, categoria_id, consumo_diario) VALUES
-      (1, 50000, 3, 0), -- Admin
-      (2, 15000, 2, 0), -- Trader1
-      (3, 8000, 1, 0),  -- Trader2
-      (4, 3000, 1, 0);  -- Analista
+      INSERT INTO Portafolio (id, id_empresa, acciones) VALUES
+      -- Ejemplo para algunos usuarios
+      (NEWID(), (SELECT TOP 1 id FROM Empresa WHERE nombre='Apple Inc.'), 50),
+      (NEWID(), (SELECT TOP 1 id FROM Empresa WHERE nombre='Microsoft Corp.'), 30),
+      (NEWID(), (SELECT TOP 1 id FROM Empresa WHERE nombre='Tesla Inc.'), 40),
+      (NEWID(), (SELECT TOP 1 id FROM Empresa WHERE nombre='Ford Motor Co.'), 100),
+      (NEWID(), (SELECT TOP 1 id FROM Empresa WHERE nombre='BP PLC'), 200);
     `);
+    console.log(" Datos insertados en Portafolio");
 
-    
-    // 5. Empresas
+    // === 5. USUARIOS ===
+    const password1 = await bcrypt.hash("password123", 10);
+    const password2 = await bcrypt.hash("password456", 10);
+    const password3 = await bcrypt.hash("password789", 10);
+    const password4 = await bcrypt.hash("analyst123", 10);
+    const password5 = await bcrypt.hash("analyst456", 10);
+    const password6 = await bcrypt.hash("admin123", 10);
+    const password7 = await bcrypt.hash("admin456", 10);
+
     await queryDB(`
-      INSERT INTO Empresa (nombre, mercado_id, ticker, cantidad_acciones_totales, acciones_disponibles, precio_accion, capitalizacion) VALUES
-      (N'Apple Inc.', 2, 'AAPL', 1000000, 600000, 180.50, 180500000),
-      (N'Microsoft Corp.', 2, 'MSFT', 2000000, 1400000, 310.20, 620400000),
-      (N'Tesla Inc.', 2, 'TSLA', 1500000, 1000000, 250.10, 375150000),
-      (N'Coca-Cola', 1, 'KO', 1200000, 700000, 60.25, 72300000),
-      (N'JP Morgan', 1, 'JPM', 1800000, 1200000, 140.80, 253440000),
-      (N'Iberdrola', 3, 'IBE', 900000, 700000, 12.30, 11070000),
-      (N'Santander', 3, 'SAN', 1000000, 800000, 3.75, 3750000);
-    `);
+      INSERT INTO Usuario (id, id_billetera, id_portafolio, nombre, alias, habilitado, direccion, pais_origen, telefono, correo, rol, contrasena_hash) VALUES
+      -- Traders
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Junior'), (SELECT TOP 1 id FROM Portafolio WHERE acciones=50), 'Juan Pérez', 'juanp', 1, 'San José, Costa Rica', 'Costa Rica', '+50688889999', 'juan@example.com', 'Trader', @hash1),
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Junior'), (SELECT TOP 1 id FROM Portafolio WHERE acciones=30), 'Ana Gómez', 'anag', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50687771122', 'ana@example.com', 'Trader', @hash2),
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Mid'), (SELECT TOP 1 id FROM Portafolio WHERE acciones=40), 'Luis Fernández', 'luisf', 1, 'Heredia, Costa Rica', 'Costa Rica', '+50686662233', 'luis@example.com', 'Trader', @hash3),
 
-    
-    // 6. Sectores
+      -- Analistas
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Mid'), NULL, 'María López', 'marial', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50687776655', 'maria@example.com', 'Analista', @hash4),
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Mid'), NULL, 'Carlos Ruiz', 'carlosr', 1, 'Heredia, Costa Rica', 'Costa Rica', '+50686663344', 'carlos@example.com', 'Analista', @hash5),
+
+      -- Admins
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Senior'), NULL, 'Carmen Soto', 'carmens', 1, 'San José, Costa Rica', 'Costa Rica', '+50685554433', 'carmen@example.com', 'Admin', @hash6),
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Senior'), NULL, 'Diego Vargas', 'diegov', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50684443322', 'diego@example.com', 'Admin', @hash7);
+    `, {
+      hash1: password1,
+      hash2: password2,
+      hash3: password3,
+      hash4: password4,
+      hash5: password5,
+      hash6: password6,
+      hash7: password7,
+    });
+
+    console.log(" Datos insertados en Usuario");
+
+    // === 6. Mercado_Habilitado ===
+    // Obtener los IDs de los usuarios
+    const usuarios = await queryDB(`SELECT id, alias FROM Usuario`);
+    const id_juanp = usuarios.find(u => u.alias === 'juanp').id;
+    const id_marial = usuarios.find(u => u.alias === 'marial').id;
+    const id_carlosr = usuarios.find(u => u.alias === 'carlosr').id;
+    const id_carmens = usuarios.find(u => u.alias === 'carmens').id;
+    const id_diegov = usuarios.find(u => u.alias === 'diegov').id;
+    const id_luisf = usuarios.find(u => u.alias === 'luisf').id;
+
     await queryDB(`
-      INSERT INTO Sector (nombre) VALUES
-      ('Tecnología'),
-      ('Energía'),
-      ('Finanzas'),
-      ('Consumo'),
-      ('Salud');
+      INSERT INTO Mercado_Habilitado (id_mercado, id_usuario) VALUES
+        ('${id_nasdaq}', '${id_juanp}'),
+        ('${id_nasdaq}', '${id_marial}'),
+        ('${id_nyse}',   '${id_carlosr}'),
+        ('${id_lse}',   '${id_carmens}'),
+        ('${id_tsx}',   '${id_diegov}'),
+        ('${id_jpx}',   '${id_luisf}');
     `);
+    console.log(" Datos insertados en Mercado_Habilitado");
 
-    
-    // 7. Empresa_Sector
+    // === 7. INVENTARIO ===
+    // Obtener los IDs de las empresas
+    const empresas = await queryDB(`SELECT id, nombre FROM Empresa`);
+    const id_apple = empresas.find(e => e.nombre === 'Apple Inc.').id;
+    const id_microsoft = empresas.find(e => e.nombre === 'Microsoft Corp.').id;
+    const id_tesla = empresas.find(e => e.nombre === 'Tesla Inc.').id;
+    const id_ford = empresas.find(e => e.nombre === 'Ford Motor Co.').id;
+    const id_bp = empresas.find(e => e.nombre === 'BP PLC').id;
+
     await queryDB(`
-      INSERT INTO Empresa_Sector (empresa_id, sector_id) VALUES
-      (1, 1), -- Apple -> Tecnología
-      (2, 1), -- Microsoft -> Tecnología
-      (3, 1), -- Tesla -> Tecnología
-      (4, 4), -- Coca-Cola -> Consumo
-      (5, 3), -- JP Morgan -> Finanzas
-      (6, 2), -- Iberdrola -> Energía
-      (7, 3); -- Santander -> Finanzas
+      INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio) VALUES
+      ('${id_apple}', 1000, 500, 150.00),
+      ('${id_microsoft}', 2000, 1500, 280.50),
+      ('${id_tesla}', 1500, 700, 800.00),
+      ('${id_ford}', 5000, 3000, 12.75),
+      ('${id_bp}', 8000, 4000, 5.60)
     `);
+    console.log(" Datos insertados en Inventario");
 
-    
-    // 8. Usuario_Mercado
-    await queryDB(`
-      INSERT INTO Usuario_Mercado (usuario_id, mercado_id, habilitado_por) VALUES
-      (2, 2, 1), -- Trader1 habilitado en NASDAQ
-      (2, 1, 1), -- Trader1 habilitado en NYSE
-      (3, 3, 1), -- Trader2 habilitado en BME
-      (4, 2, 1); -- Analista en NASDAQ
-    `);
-
-    
-    // 9. Recargas
-    await queryDB(`
-      INSERT INTO Recarga (wallet_id, monto) VALUES
-      (2, 5000),
-      (3, 2000),
-      (4, 1000);
-    `);
-
-    
-    // 10. Precios Históricos (últimos 5 días)
-    const precios = [
-      { empresa_id: 1, base: 180.5 }, // Apple
-      { empresa_id: 2, base: 310.2 }, // Microsoft
-      { empresa_id: 3, base: 250.1 }, // Tesla
-      { empresa_id: 4, base: 60.25 }, // Coca-Cola
-      { empresa_id: 5, base: 140.8 }, // JP Morgan
-      { empresa_id: 6, base: 12.3 }, // Iberdrola
-      { empresa_id: 7, base: 3.75 }  // Santander
-    ];
-
-    const today = new Date();
-    for (let d = 0; d < 5; d++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() - d);
-      const ts = date.toISOString().slice(0, 19).replace('T', ' ');
-
-      for (const p of precios) {
-        const variacion = (Math.random() - 0.5) * 0.05 * p.base;
-        const precio = (p.base + variacion).toFixed(2);
-        await queryDB(`
-          INSERT INTO Precio_Historico (empresa_id, ts_utc, precio)
-          VALUES (${p.empresa_id}, '${ts}', ${precio});
-        `);
-      }
-    }
-
-    // 11. Posiciones iniciales
-    await queryDB(`
-      INSERT INTO Posicion (usuario_id, empresa_id, cantidad, costo_promedio) VALUES
-      (2, 1, 50, 178.00), -- Trader1 tiene 50 Apple
-      (2, 3, 20, 240.00), -- Trader1 tiene 20 Tesla
-      (3, 6, 100, 11.50); -- Trader2 tiene 100 Iberdrola
-    `);
-
-    // 12. Operaciones recientes
-    await queryDB(`
-      INSERT INTO Operacion (usuario_id, empresa_id, lado, cantidad, precio, nota) VALUES
-      (2, 1, 'B', 50, 178.00, N'Compra inicial Apple'),
-      (2, 3, 'B', 20, 240.00, N'Compra Tesla'),
-      (3, 6, 'B', 100, 11.50, N'Compra Iberdrola'),
-      (2, 1, 'S', 10, 182.00, N'Venta parcial Apple');
-    `);
-
-    // 13. Acciones (resumen)
-    await queryDB(`
-      INSERT INTO Acciones (id_usuario, id_empresa, acciones, valor) VALUES
-      (2, 1, 40, 180.50*40), -- Trader1 mantiene 40 Apple
-      (2, 3, 20, 250.10*20), -- Trader1 Tesla
-      (3, 6, 100, 12.30*100); -- Trader2 Iberdrola
-    `);
-
-    // 14. Configuración App
-    await queryDB(`
-      INSERT INTO App_Setting (clave, valor) VALUES
-      ('version', N'1.0.0'),
-      ('modo', N'desarrollo'),
-      ('max_operaciones_diarias', N'100');
-    `);
-
-    console.log('Datos semilla insertados');
-  } catch (err) {
-    console.error('Error insertando datos semilla:', err);
-    throw err;
+    console.log("\n Inserción completada con éxito.");
+  } catch (error) {
+    console.error(" Error durante la inserción de datos:", error);
   }
 }
 
