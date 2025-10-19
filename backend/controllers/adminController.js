@@ -1,4 +1,5 @@
 import { queryDB } from "../config/db.js";
+import bcrypt from "bcryptjs";
 
 export async function getMercados(req, res) {
     try {
@@ -288,5 +289,535 @@ export async function delistarEmpresa(req, res) {
     } catch (error) {
         console.error('Error:', error);
         res.status(500).json({ message: 'Error al delistar empresa' });
+    }
+}
+
+// PRECIOS & CARGA
+// Obtener historial de precios de una empresa
+export async function getHistorialPrecio(req, res) {
+    const { id } = req.params;
+
+    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!guidRegex.test(id)) {
+        return res.status(400).json({ message: 'ID de empresa inválido' });
+    }
+
+    try {
+        const historial = await queryDB(`
+            SELECT fecha, precio
+            FROM Inventario_Historial
+            WHERE id_empresa = @id_empresa
+            ORDER BY fecha ASC
+        `, { id_empresa: id });
+
+        // Agregar precio actual
+        const precioActual = await queryDB(
+            `SELECT precio FROM Inventario WHERE id_empresa = @id_empresa`,
+            { id_empresa: id }
+        );
+
+        if (precioActual.length > 0) {
+            historial.push({
+                fecha: new Date(),
+                precio: precioActual[0].precio
+            });
+        }
+
+        res.json(historial);
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al obtener historial de precios' });
+    }
+}
+
+// Cargar precio manual
+export async function cargarPrecioManual(req, res) {
+    const { id } = req.params;
+    const { precio, fecha } = req.body;
+
+    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!guidRegex.test(id)) {
+        return res.status(400).json({ message: 'ID de empresa inválido' });
+    }
+
+    // Validaciones
+    if (!precio || parseFloat(precio) <= 0) {
+        return res.status(400).json({ message: 'precio inválido' });
+    }
+
+    if (!fecha) {
+        return res.status(400).json({ message: 'formato de fecha inválido' });
+    }
+
+    // Validar que la fecha no sea futura
+    const fechaSeleccionada = new Date(fecha);
+    const ahora = new Date();
+    if (fechaSeleccionada > ahora) {
+        return res.status(400).json({ message: 'La fecha no puede ser futura' });
+    }
+
+    try {
+        const precioNum = parseFloat(precio);
+
+        // Actualizar precio actual en Inventario
+        await queryDB(
+            `UPDATE Inventario SET precio = @precio WHERE id_empresa = @id_empresa`,
+            { precio: precioNum, id_empresa: id }
+        );
+
+        // Registrar en historial
+        await queryDB(
+            `INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
+             SELECT @fecha, id_empresa, acciones_totales, acciones_disponibles, @precio
+             FROM Inventario WHERE id_empresa = @id_empresa`,
+            { fecha: fechaSeleccionada, precio: precioNum, id_empresa: id }
+        );
+
+        res.json({ 
+            message: 'Precio cargado exitosamente',
+            precio: precioNum,
+            fecha: fechaSeleccionada
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al cargar precio' });
+    }
+}
+
+// Carga batch de precios (API)
+export async function cargarPreciosBatch(req, res) {
+    const { precios } = req.body; // Array de { id_empresa, precio }
+
+    if (!precios || !Array.isArray(precios) || precios.length === 0) {
+        return res.status(400).json({ message: 'Datos inválidos' });
+    }
+
+    try {
+        let exitosos = 0;
+        let fallidos = 0;
+        const errores = [];
+
+        for (const item of precios) {
+            const { id_empresa, precio } = item;
+
+            // Validaciones
+            if (!id_empresa || !precio || parseFloat(precio) <= 0) {
+                fallidos++;
+                errores.push({ id_empresa, error: 'precio inválido' });
+                continue;
+            }
+
+            try {
+                const precioNum = parseFloat(precio);
+
+                // Actualizar precio actual
+                await queryDB(
+                    `UPDATE Inventario SET precio = @precio WHERE id_empresa = @id_empresa`,
+                    { precio: precioNum, id_empresa: id_empresa }
+                );
+
+                // Registrar en historial
+                await queryDB(
+                    `INSERT INTO Inventario_Historial (id_empresa, acciones_totales, acciones_disponibles, precio)
+                     SELECT id_empresa, acciones_totales, acciones_disponibles, @precio
+                     FROM Inventario WHERE id_empresa = @id_empresa`,
+                    { precio: precioNum, id_empresa: id_empresa }
+                );
+
+                exitosos++;
+            } catch (err) {
+                fallidos++;
+                errores.push({ id_empresa, error: err.message });
+            }
+        }
+
+        res.json({
+            message: 'Carga batch completada',
+            exitosos: exitosos,
+            fallidos: fallidos,
+            errores: errores
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'auth fallida' });
+    }
+}
+
+// USUARIOS & CUENTAS
+// Obtener todos los usuarios
+export async function getUsuarios(req, res) {
+    try {
+        const usuarios = await queryDB(`
+            SELECT 
+                id,
+                alias,
+                nombre,
+                rol,
+                habilitado,
+                correo,
+                telefono,
+                direccion,
+                pais_origen
+            FROM Usuario
+            ORDER BY alias
+        `);
+
+        res.json(usuarios);
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al obtener usuarios' });
+    }
+}
+
+// Obtener cuentas de un usuario 
+export async function getUsuarioCuentas(req, res) {
+    const { id } = req.params;
+
+    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!guidRegex.test(id)) {
+        return res.status(400).json({ message: 'ID de usuario inválido' });
+    }
+
+    try {
+        // Obtener wallet
+        const wallet = await queryDB(`
+            SELECT 
+                b.id,
+                b.fondos AS saldo,
+                b.categoria,
+                b.limite_diario,
+                b.consumo
+            FROM Billetera b
+            INNER JOIN Usuario u ON u.id_billetera = b.id
+            WHERE u.id = @id_usuario
+        `, { id_usuario: id });
+
+        if (wallet.length === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        // Obtener mercados habilitados
+        const mercados = await queryDB(`
+            SELECT m.id, m.nombre
+            FROM Mercado m
+            INNER JOIN Mercado_Habilitado mh ON mh.id_mercado = m.id
+            WHERE mh.id_usuario = @id_usuario
+            ORDER BY m.nombre
+        `, { id_usuario: id });
+
+        res.json({
+            wallet: {
+                id: wallet[0].id,
+                saldo: wallet[0].saldo,
+                categoria: wallet[0].categoria,
+                limite_diario: wallet[0].limite_diario,
+                consumo: wallet[0].consumo
+            },
+            mercados: mercados
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al obtener cuentas del usuario' });
+    }
+}
+
+// Deshabilitar usuario (con liquidación)
+export async function deshabilitarUsuario(req, res) {
+    const { id } = req.params;
+    const { justificacion } = req.body;
+
+    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!guidRegex.test(id)) {
+        return res.status(400).json({ message: 'ID de usuario inválido' });
+    }
+
+    if (!justificacion || !justificacion.trim()) {
+        return res.status(400).json({ message: 'justificación requerida' });
+    }
+
+    try {
+        // Verificar que el usuario existe y está habilitado
+        const usuario = await queryDB(
+            `SELECT id, alias, habilitado, id_billetera FROM Usuario WHERE id = @id_usuario`,
+            { id_usuario: id }
+        );
+
+        if (usuario.length === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        if (!usuario[0].habilitado) {
+            return res.status(400).json({ message: 'usuario ya deshabilitado' });
+        }
+
+        const alias = usuario[0].alias;
+        const idBilletera = usuario[0].id_billetera;
+
+        // Obtener posiciones activas del usuario
+        const posiciones = await queryDB(`
+            SELECT 
+                t.id_empresa,
+                SUM(CASE WHEN t.tipo = 'Compra' THEN t.cantidad WHEN t.tipo = 'Venta' THEN -t.cantidad ELSE 0 END) AS cantidad_net
+            FROM Transaccion t
+            WHERE t.alias = @alias
+            GROUP BY t.id_empresa
+            HAVING SUM(CASE WHEN t.tipo = 'Compra' THEN t.cantidad WHEN t.tipo = 'Venta' THEN -t.cantidad ELSE 0 END) > 0
+        `, { alias: alias });
+
+        let totalLiquidado = 0;
+        let posicionesLiquidadas = 0;
+
+        // Liquidar cada posición al precio actual
+        for (let i = 0; i < posiciones.length; i++) {
+            const pos = posiciones[i];
+            const cantidad = pos.cantidad_net;
+
+            // Obtener precio actual
+            const inventario = await queryDB(
+                `SELECT precio FROM Inventario WHERE id_empresa = @id_empresa`,
+                { id_empresa: pos.id_empresa }
+            );
+
+            if (inventario.length > 0) {
+                const precio = inventario[0].precio;
+                const montoLiquidacion = cantidad * precio;
+
+                // Abonar al wallet
+                await queryDB(
+                    `UPDATE Billetera SET fondos = fondos + @monto WHERE id = @id_billetera`,
+                    { monto: montoLiquidacion, id_billetera: idBilletera }
+                );
+
+                // Devolver acciones al inventario
+                await queryDB(
+                    `UPDATE Inventario SET acciones_disponibles = acciones_disponibles + @cantidad WHERE id_empresa = @id_empresa`,
+                    { cantidad: cantidad, id_empresa: pos.id_empresa }
+                );
+
+                // Registrar transacción de liquidación
+                await queryDB(
+                    `INSERT INTO Transaccion (alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad)
+                     VALUES (@alias, (SELECT id_portafolio FROM Usuario WHERE id = @id_usuario), @id_billetera, @id_empresa, 'Venta', @precio, @cantidad)`,
+                    {
+                        alias: alias,
+                        id_usuario: id,
+                        id_billetera: idBilletera,
+                        id_empresa: pos.id_empresa,
+                        precio: precio,
+                        cantidad: cantidad
+                    }
+                );
+
+                totalLiquidado += montoLiquidacion;
+                posicionesLiquidadas++;
+            }
+        }
+
+        // Deshabilitar usuario
+        await queryDB(
+            `UPDATE Usuario SET habilitado = 0, deshabilitado_justificacion = @justificacion WHERE id = @id_usuario`,
+            { justificacion: justificacion, id_usuario: id }
+        );
+
+        res.json({
+            message: 'Usuario deshabilitado exitosamente',
+            posiciones_liquidadas: posicionesLiquidadas,
+            total_liquidado: totalLiquidado,
+            justificacion: justificacion
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al deshabilitar usuario' });
+    }
+}
+
+// Top 5 traders por dinero en wallet
+export async function getTopWallet(req, res) {
+    try {
+        const top = await queryDB(`
+            SELECT TOP 5
+                u.alias,
+                b.fondos AS saldo
+            FROM Usuario u
+            INNER JOIN Billetera b ON u.id_billetera = b.id
+            WHERE u.rol = 'Trader' AND u.habilitado = 1
+            ORDER BY b.fondos DESC
+        `);
+
+        res.json(top);
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al obtener top wallet' });
+    }
+}
+
+// Top 5 traders por valor en acciones
+export async function getTopAcciones(req, res) {
+    try {
+        const top = await queryDB(`
+            SELECT TOP 5
+                u.alias,
+                SUM(
+                    (SELECT SUM(CASE WHEN tipo='Compra' THEN cantidad WHEN tipo='Venta' THEN -cantidad ELSE 0 END)
+                     FROM Transaccion t2
+                     WHERE t2.alias = u.alias AND t2.id_empresa = t.id_empresa) * i.precio
+                ) AS valor_acciones
+            FROM Usuario u
+            INNER JOIN Transaccion t ON t.alias = u.alias
+            INNER JOIN Inventario i ON i.id_empresa = t.id_empresa
+            WHERE u.rol = 'Trader' AND u.habilitado = 1
+            GROUP BY u.alias
+            HAVING SUM(
+                (SELECT SUM(CASE WHEN tipo='Compra' THEN cantidad WHEN tipo='Venta' THEN -cantidad ELSE 0 END)
+                 FROM Transaccion t2
+                 WHERE t2.alias = u.alias AND t2.id_empresa = t.id_empresa) * i.precio
+            ) > 0
+            ORDER BY valor_acciones DESC
+        `);
+
+        res.json(top);
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al obtener top acciones' });
+    }
+}
+
+// Crear usuario 
+export async function createUsuario(req, res) {
+    const { alias, nombre, correo, password, rol, categoria } = req.body;
+
+    if (!alias || !nombre || !correo || !password || !rol) {
+        return res.status(400).json({ message: 'Faltan datos requeridos' });
+    }
+
+    try {
+        // Verificar si ya existe
+        const existing = await queryDB(
+            `SELECT * FROM Usuario WHERE alias = @alias OR correo = @correo`,
+            { alias: alias, correo: correo }
+        );
+
+        if (existing.length > 0) {
+            return res.status(400).json({ message: 'Alias o correo ya registrado' });
+        }
+
+        // Crear billetera según categoría
+        const categoriaFinal = categoria || 'Junior';
+        let fondos = 0;
+        let limiteDiario = 0;
+
+        switch (categoriaFinal) {
+            case 'Junior':
+                fondos = 1000;
+                limiteDiario = 500;
+                break;
+            case 'Mid':
+                fondos = 5000;
+                limiteDiario = 2000;
+                break;
+            case 'Senior':
+                fondos = 20000;
+                limiteDiario = 10000;
+                break;
+        }
+
+        const billetera = await queryDB(
+            `INSERT INTO Billetera (categoria, fondos, limite_diario, consumo)
+             OUTPUT INSERTED.id
+             VALUES (@categoria, @fondos, @limite_diario, 0)`,
+            { categoria: categoriaFinal, fondos: fondos, limite_diario: limiteDiario }
+        );
+
+        const idBilletera = billetera[0].id;
+
+        // Encriptar contraseña
+        const contrasenaHash = await bcrypt.hash(password, 10);
+
+        // Crear usuario
+        await queryDB(
+            `INSERT INTO Usuario (id_billetera, nombre, alias, correo, contrasena_hash, rol, habilitado)
+             VALUES (@id_billetera, @nombre, @alias, @correo, @contrasena_hash, @rol, 1)`,
+            {
+                id_billetera: idBilletera,
+                nombre: nombre,
+                alias: alias,
+                correo: correo,
+                contrasena_hash: contrasenaHash,
+                rol: rol
+            }
+        );
+
+        res.status(201).json({ message: 'Usuario creado exitosamente' });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al crear usuario' });
+    }
+}
+
+// Actualizar usuario (Admin)
+export async function updateUsuarioAdmin(req, res) {
+    const { id } = req.params;
+    const { nombre, correo, rol, categoria, limite_diario } = req.body;
+
+    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!guidRegex.test(id)) {
+        return res.status(400).json({ message: 'ID de usuario inválido' });
+    }
+
+    try {
+        // Actualizar datos del usuario
+        if (nombre || correo || rol) {
+            const updates = [];
+            const params = { id_usuario: id };
+
+            if (nombre) {
+                updates.push('nombre = @nombre');
+                params.nombre = nombre;
+            }
+            if (correo) {
+                updates.push('correo = @correo');
+                params.correo = correo;
+            }
+            if (rol) {
+                updates.push('rol = @rol');
+                params.rol = rol;
+            }
+
+            if (updates.length > 0) {
+                await queryDB(
+                    `UPDATE Usuario SET ${updates.join(', ')} WHERE id = @id_usuario`,
+                    params
+                );
+            }
+        }
+
+        // Actualizar billetera 
+        if (categoria || limite_diario) {
+            const billeteraUpdates = [];
+            const billeteraParams = {};
+
+            if (categoria) {
+                billeteraUpdates.push('categoria = @categoria');
+                billeteraParams.categoria = categoria;
+            }
+            if (limite_diario) {
+                billeteraUpdates.push('limite_diario = @limite_diario');
+                billeteraParams.limite_diario = parseFloat(limite_diario);
+            }
+
+            if (billeteraUpdates.length > 0) {
+                await queryDB(
+                    `UPDATE Billetera 
+                     SET ${billeteraUpdates.join(', ')}
+                     WHERE id = (SELECT id_billetera FROM Usuario WHERE id = @id_usuario)`,
+                    { ...billeteraParams, id_usuario: id }
+                );
+            }
+        }
+
+        res.json({ message: 'Usuario actualizado exitosamente' });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al actualizar usuario' });
     }
 }
