@@ -6,6 +6,7 @@ import empresaRoutes from './routes/empresaRoutes.js';
 import homeTraderRoute from './routes/homeTraderRoute.js';
 import portafolioRoutes from './routes/portafolioRoutes.js';
 import analistaRoutes from './routes/analistaRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 
 const app = express();
 app.use(cors());
@@ -18,5 +19,6 @@ app.use('/api/empresas', empresaRoutes);
 app.use('/api/home-trader', homeTraderRoute);
 app.use('/api/portafolio', portafolioRoutes);
 app.use('/api/analista', analistaRoutes);
+app.use('/api/admin', adminRoutes);
 
 export default app;
