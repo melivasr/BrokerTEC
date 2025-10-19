@@ -26,6 +26,7 @@ router.get('/usuarios/:id/cuentas', getUsuarioCuentas);
 router.post('/usuarios', createUsuario);
 router.put('/usuarios/:id', updateUsuarioAdmin);
 router.post('/usuarios/:id/deshabilitar', deshabilitarUsuario);
+
 router.get('/usuarios/top-wallet', getTopWallet);
 router.get('/usuarios/top-acciones', getTopAcciones);
 export default router;

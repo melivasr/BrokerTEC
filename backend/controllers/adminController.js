@@ -644,9 +644,10 @@ export async function getTopWallet(req, res) {
             ORDER BY b.fondos DESC
         `);
 
+        console.log('Top Wallet:', top); // Debug
         res.json(top);
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error en getTopWallet:', error);
         res.status(500).json({ message: 'Error al obtener top wallet' });
     }
 }
@@ -654,34 +655,64 @@ export async function getTopWallet(req, res) {
 // Top 5 traders por valor en acciones
 export async function getTopAcciones(req, res) {
     try {
-        const top = await queryDB(`
-            SELECT TOP 5
-                u.alias,
-                SUM(
-                    (SELECT SUM(CASE WHEN tipo='Compra' THEN cantidad WHEN tipo='Venta' THEN -cantidad ELSE 0 END)
-                     FROM Transaccion t2
-                     WHERE t2.alias = u.alias AND t2.id_empresa = t.id_empresa) * i.precio
-                ) AS valor_acciones
+        // Primero obtenemos todos los traders
+        const traders = await queryDB(`
+            SELECT u.alias
             FROM Usuario u
-            INNER JOIN Transaccion t ON t.alias = u.alias
-            INNER JOIN Inventario i ON i.id_empresa = t.id_empresa
             WHERE u.rol = 'Trader' AND u.habilitado = 1
-            GROUP BY u.alias
-            HAVING SUM(
-                (SELECT SUM(CASE WHEN tipo='Compra' THEN cantidad WHEN tipo='Venta' THEN -cantidad ELSE 0 END)
-                 FROM Transaccion t2
-                 WHERE t2.alias = u.alias AND t2.id_empresa = t.id_empresa) * i.precio
-            ) > 0
-            ORDER BY valor_acciones DESC
         `);
 
-        res.json(top);
+        console.log('Traders encontrados:', traders); // Debug
+
+        // Para cada trader, calculamos su valor en acciones
+        const resultados = [];
+        
+        for (const trader of traders) {
+            // Obtener posiciones netas por empresa
+            const posiciones = await queryDB(`
+                SELECT 
+                    t.id_empresa,
+                    SUM(CASE WHEN t.tipo = 'Compra' THEN t.cantidad WHEN t.tipo = 'Venta' THEN -t.cantidad ELSE 0 END) AS cantidad_neta
+                FROM Transaccion t
+                WHERE t.alias = @alias
+                GROUP BY t.id_empresa
+                HAVING SUM(CASE WHEN t.tipo = 'Compra' THEN t.cantidad WHEN t.tipo = 'Venta' THEN -t.cantidad ELSE 0 END) > 0
+            `, { alias: trader.alias });
+
+            console.log(`Posiciones de ${trader.alias}:`, posiciones); // Debug
+
+            let valorTotal = 0;
+
+            // Para cada posición, calcular valor actual
+            for (const pos of posiciones) {
+                const inventario = await queryDB(`
+                    SELECT precio FROM Inventario WHERE id_empresa = @id_empresa
+                `, { id_empresa: pos.id_empresa });
+
+                if (inventario.length > 0) {
+                    const precio = inventario[0].precio;
+                    valorTotal += pos.cantidad_neta * precio;
+                }
+            }
+
+            if (valorTotal > 0) {
+                resultados.push({
+                    alias: trader.alias,
+                    valor_acciones: valorTotal
+                });
+            }
+        }
+        // Ordenar por valor descendente y tomar top 5
+        resultados.sort((a, b) => b.valor_acciones - a.valor_acciones);
+        const top5 = resultados.slice(0, 5);
+
+        console.log('Top 5 Acciones:', top5); // Debug
+        res.json(top5);
     } catch (error) {
-        console.error('Error:', error);
+        console.error('Error en getTopAcciones:', error);
         res.status(500).json({ message: 'Error al obtener top acciones' });
     }
 }
-
 // Crear usuario 
 export async function createUsuario(req, res) {
     const { alias, nombre, correo, password, rol, categoria } = req.body;
