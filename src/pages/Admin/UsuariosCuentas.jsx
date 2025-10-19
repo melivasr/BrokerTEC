@@ -159,7 +159,7 @@ const UsuariosCuentas = () => {
 
           {/* DETALLES DE CUENTAS */}
           {cuentas && selectedUsuario && (
-            <div style={{ padding: 24, background: '#f8f9fa', borderRadius: 8, marginBottom: 32 }}>
+            <div style={{ padding: 24, background: 'var(--card-bg)', borderRadius: 8, marginBottom: 32 }}>
               <h3>Cuentas de {selectedUsuario.alias}</h3>
               
               <div style={{ marginBottom: 16 }}>
