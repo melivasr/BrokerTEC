@@ -1,34 +1,102 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import Sidebar from "../../components/Sidebar";
+import * as analistaService from "../../services/analistaService";
 
 export default function ReportesEmpresa() {
   const [filtros, setFiltros] = useState({ desde: "", hasta: "", mercadoId: "" });
-  const [empresaId, setEmpresaId] = useState("1");
+  const [empresaId, setEmpresaId] = useState("");
+  const [empresas, setEmpresas] = useState([]);
+  const [mercados, setMercados] = useState([]);
+  
+  const [transacciones, setTransacciones] = useState([]);
+  const [mayorTenedor, setMayorTenedor] = useState(null);
+  const [tesoreria, setTesoreria] = useState(null);
+  const [historicoPrecio, setHistoricoPrecio] = useState([]);
+  const [empresaSeleccionada, setEmpresaSeleccionada] = useState(null);
+  
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  // Mock empresa + histórico + transacciones
-  const empresa = { nombre: "Acme Corp", ticker: "ACM" };
-  const historico_precios = [
-    { fecha: "2025-09-27", valor: 98 },
-    { fecha: "2025-09-28", valor: 101 },
-    { fecha: "2025-09-29", valor: 97 },
-    { fecha: "2025-09-30", valor: 104 },
-    { fecha: "2025-10-01", valor: 103 },
-    { fecha: "2025-10-02", valor: 106 },
-    { fecha: "2025-10-03", valor: 110 },
-  ];
-  const mayor_tenedor_alias = "Tesoreria";
-  const inventario_tesoreria = 125000;
+  // Cargar mercados y empresas al inicio
+  useEffect(() => {
+    async function cargarInicial() {
+      try {
+        const merc = await analistaService.getMercadosAnalista();
+        setMercados(merc);
+        
+        const emp = await analistaService.getEmpresasPorMercado();
+        setEmpresas(emp);
+      } catch (err) {
+        console.error('Error cargando datos iniciales:', err);
+      }
+    }
+    cargarInicial();
+  }, []);
 
-  const transacciones = [
-    { fecha_hora: "2025-10-03T10:15:00Z", alias: "trader_01", tipo: "Compra", cantidad: 120, precio: 110 },
-    { fecha_hora: "2025-10-03T12:05:00Z", alias: "trader_17", tipo: "Venta", cantidad: 40, precio: 109.5 },
-    { fecha_hora: "2025-10-04T14:45:00Z", alias: "trader_08", tipo: "Compra", cantidad: 300, precio: 111.2 },
-  ];
+  // Actualizar empresas cuando cambia el mercado
+  useEffect(() => {
+    async function cargarEmpresas() {
+      try {
+        const emp = await analistaService.getEmpresasPorMercado(filtros.mercadoId || null);
+        setEmpresas(emp);
+      } catch (err) {
+        console.error('Error cargando empresas:', err);
+      }
+    }
+    cargarEmpresas();
+  }, [filtros.mercadoId]);
 
-  const aplicar = (e) => {
+  const aplicar = async (e) => {
     e.preventDefault();
-    // futuro: fetch con filtros + empresaId
+    
+    if (!empresaId) {
+      setError("Debes seleccionar una empresa");
+      return;
+    }
+
+    // Validación de rango de fechas
+    if (filtros.desde && filtros.hasta) {
+      const inicio = new Date(filtros.desde);
+      const fin = new Date(filtros.hasta);
+      if (inicio > fin) {
+        setError("rango de fechas inválido");
+        return;
+      }
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const params = {};
+      if (filtros.desde) params.fecha_inicio = filtros.desde;
+      if (filtros.hasta) params.fecha_fin = filtros.hasta;
+
+      // Obtener datos de la empresa seleccionada
+      const empresaEncontrada = empresas.find(e => e.id === empresaId);
+      setEmpresaSeleccionada(empresaEncontrada);
+
+      // Llamar a todos los endpoints
+      const trans = await analistaService.getTransaccionesEmpresa(empresaId, params);
+      setTransacciones(trans);
+
+      const tenedor = await analistaService.getMayorTenedor(empresaId);
+      setMayorTenedor(tenedor);
+
+      const inv = await analistaService.getInventarioTesoreria(empresaId);
+      setTesoreria(inv);
+
+      const hist = await analistaService.getHistorialPrecio(empresaId, params);
+      setHistoricoPrecio(hist);
+
+    } catch (err) {
+      console.error('Error:', err);
+      const mensaje = err?.response?.data?.message || err?.message || 'Error al cargar datos';
+      setError(mensaje);
+    }
+
+    setLoading(false);
   };
 
   return (
@@ -39,8 +107,13 @@ export default function ReportesEmpresa() {
 
         <form onSubmit={aplicar} style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16 }}>
           <div>
-            <label>Empresa ID</label><br/>
-            <input value={empresaId} onChange={(e) => setEmpresaId(e.target.value)} placeholder="Ej: 1" />
+            <label>Empresa</label><br/>
+            <select value={empresaId} onChange={(e) => setEmpresaId(e.target.value)}>
+              <option value="">Selecciona una empresa</option>
+              {empresas.map(emp => (
+                <option key={emp.id} value={emp.id}>{emp.nombre} ({emp.ticker})</option>
+              ))}
+            </select>
           </div>
           <div>
             <label>Desde</label><br/>
@@ -54,54 +127,83 @@ export default function ReportesEmpresa() {
             <label>Mercado</label><br/>
             <select value={filtros.mercadoId} onChange={(e) => setFiltros({ ...filtros, mercadoId: e.target.value })}>
               <option value="">Todos</option>
-              <option value="1">NYSE</option>
-              <option value="2">NASDAQ</option>
+              {mercados.map(m => (
+                <option key={m.id} value={m.id}>{m.nombre}</option>
+              ))}
             </select>
           </div>
-          <button type="submit">Aplicar</button>
+          <button type="submit" disabled={loading}>
+            {loading ? 'Cargando...' : 'Aplicar'}
+          </button>
         </form>
 
-        <div style={{ background: "#fff", padding: 16, borderRadius: 8, boxShadow: "0 2px 8px #eee" }}>
-          <h3>{empresa.nombre} ({empresa.ticker})</h3>
-          <p><b>Mayor tenedor:</b> {mayor_tenedor_alias === "Tesoreria" ? "administracion" : mayor_tenedor_alias}</p>
-          <p><b>Inventario Tesorería:</b> {inventario_tesoreria.toLocaleString()}</p>
+        {error && <div style={{ color: "red", marginBottom: 16 }}>{error}</div>}
 
-          <h4 style={{ marginTop: 16 }}>Precio vs. Tiempo</h4>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={historico_precios}>
-              <XAxis dataKey="fecha" />
-              <YAxis />
-              <Tooltip formatter={(v) => `$${v}`} />
-              <Line type="monotone" dataKey="valor" stroke="#2ecc71" />
-            </LineChart>
-          </ResponsiveContainer>
+        {empresaSeleccionada && (
+          <div style={{ background: "#fff", padding: 16, borderRadius: 8, boxShadow: "0 2px 8px #eee" }}>
+            <h3>{empresaSeleccionada.nombre} ({empresaSeleccionada.ticker})</h3>
+            
+            <p>
+              <b>Mayor tenedor:</b> {mayorTenedor ? mayorTenedor.tenedor : 'Cargando...'}
+              {mayorTenedor && ` (${mayorTenedor.total_acciones} acciones)`}
+            </p>
+            
+            <p>
+              <b>Inventario Tesorería:</b> {tesoreria ? `${tesoreria.acciones_disponibles.toLocaleString()} acciones disponibles` : 'Cargando...'}
+            </p>
 
-          <h4 style={{ marginTop: 16 }}>Historial de transacciones</h4>
-          <table style={{ width: "100%" }}>
-            <thead>
-              <tr>
-                <th>Fecha–Hora</th>
-                <th>Alias</th>
-                <th>Tipo</th>
-                <th>Cantidad</th>
-                <th>Precio</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transacciones.length ? transacciones.map((t, i) => (
-                <tr key={i}>
-                  <td>{new Date(t.fecha_hora).toLocaleString()}</td>
-                  <td>{t.alias}</td>
-                  <td>{t.tipo}</td>
-                  <td>{t.cantidad}</td>
-                  <td>${t.precio}</td>
+            {tesoreria && (
+              <div style={{ marginBottom: 16 }}>
+                <p>Acciones totales: {tesoreria.acciones_totales.toLocaleString()}</p>
+                <p>Acciones en circulación: {tesoreria.acciones_en_circulacion.toLocaleString()}</p>
+                <p>Precio actual: ${tesoreria.precio_actual}</p>
+                <p>% en Tesorería: {tesoreria.porcentaje_tesoreria}%</p>
+              </div>
+            )}
+
+            <h4 style={{ marginTop: 16 }}>Precio vs. Tiempo</h4>
+            {historicoPrecio.length > 0 ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={historicoPrecio}>
+                  <XAxis dataKey="fecha" tickFormatter={(v) => new Date(v).toLocaleDateString()} />
+                  <YAxis />
+                  <Tooltip formatter={(v) => `$${v}`} />
+                  <Line type="monotone" dataKey="precio" stroke="#2ecc71" />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <p style={{ color: "orange" }}>Sin datos históricos de precio</p>
+            )}
+
+            <h4 style={{ marginTop: 16 }}>Historial de transacciones</h4>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr>
+                  <th style={{ borderBottom: "1px solid #ddd", padding: 8 }}>Fecha–Hora</th>
+                  <th style={{ borderBottom: "1px solid #ddd", padding: 8 }}>Alias</th>
+                  <th style={{ borderBottom: "1px solid #ddd", padding: 8 }}>Tipo</th>
+                  <th style={{ borderBottom: "1px solid #ddd", padding: 8 }}>Cantidad</th>
+                  <th style={{ borderBottom: "1px solid #ddd", padding: 8 }}>Precio</th>
+                  <th style={{ borderBottom: "1px solid #ddd", padding: 8 }}>Monto Total</th>
                 </tr>
-              )) : (
-                <tr><td colSpan={5} style={{ color: "orange", textAlign: "center" }}>Sin transacciones</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {transacciones.length > 0 ? transacciones.map((t) => (
+                  <tr key={t.id}>
+                    <td style={{ padding: 8 }}>{new Date(t.fecha).toLocaleString()}</td>
+                    <td style={{ padding: 8 }}>{t.alias}</td>
+                    <td style={{ padding: 8 }}>{t.tipo}</td>
+                    <td style={{ padding: 8 }}>{t.cantidad}</td>
+                    <td style={{ padding: 8 }}>${t.precio}</td>
+                    <td style={{ padding: 8 }}>${t.monto_total}</td>
+                  </tr>
+                )) : (
+                  <tr><td colSpan={6} style={{ color: "orange", textAlign: "center", padding: 8 }}>Sin transacciones</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </main>
     </div>
   );
