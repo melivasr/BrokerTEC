@@ -108,3 +108,13 @@ body.dark-mode {
   --sidebar-bg: #1e1e1e;
   --sidebar-border: #333;
 }
+
+table thead th {
+  background: #f5f5f5;
+  color: #111827;
+}
+
+body.dark-mode table thead th {
+  background: #1f2937; 
+  color: #e5e7eb;      
+}

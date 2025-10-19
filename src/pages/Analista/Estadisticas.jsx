@@ -93,7 +93,7 @@ export default function Estadisticas() {
         {error && <div style={{ color: "red", marginBottom: 16 }}>{error}</div>}
 
         {data.length > 0 ? (
-          <div style={{ background: "#fff", padding: 16, borderRadius: 8, boxShadow: "0 2px 8px #eee" }}>
+          <div style={{ background: 'var(--card-bg)', padding: 16, borderRadius: 8, boxShadow: "0 2px 8px #eee" }}>
             <h3>
               {nivel === "mercado" 
                 ? "Distribución por Mercado" 
