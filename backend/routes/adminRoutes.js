@@ -1,4 +1,3 @@
-// adminRoutes.js
 import express from 'express';
 const router = express.Router();
 import {getMercados, createMercado, updateMercado, deleteMercado, getEmpresasAdmin, createEmpresaAdmin,
