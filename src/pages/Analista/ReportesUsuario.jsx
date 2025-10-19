@@ -111,7 +111,7 @@ export default function ReportesUsuario() {
         {error && <div style={{ color: "red", marginBottom: 16 }}>{error}</div>}
 
         {resultado && (
-          <div style={{ background: "#fff", padding: 16, borderRadius: 8, boxShadow: "0 2px 8px #eee" }}>
+          <div style={{ background: 'var(--card-bg)', padding: 16, borderRadius: 8, boxShadow: "0 2px 8px #eee" }}>
             <h3>Alias: {resultado.alias}</h3>
             
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
