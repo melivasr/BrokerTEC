@@ -337,210 +337,200 @@ export async function getHistorialUsuario(req, res) {
 }
 
 // ESTADÍSTICAS
-
 // Estadísticas por mercado
 export async function getEstadisticasMercado(req, res) {
-    try {
-        // Verificar si hay posiciones
-        const hayPosiciones = await queryDB(
-            `SELECT COUNT(*) AS total FROM Portafolio WHERE acciones > 0`
-        );
+try {
+    // Totales y Tesorería por mercado (base del denominador)
+    const base = await queryDB(`
+    SELECT 
+        m.nombre AS mercado,
+        SUM(inv.acciones_totales)      AS total_acciones,
+        SUM(inv.acciones_disponibles)  AS tesoreria
+    FROM Empresa e
+    INNER JOIN Mercado m   ON e.id_mercado = m.id
+    INNER JOIN Inventario inv ON inv.id_empresa = e.id
+    GROUP BY m.nombre
+    `);
 
-        if (hayPosiciones[0].total === 0) {
-            return res.status(200).json({ 
-                message: 'sin posiciones para calcular',
-                estadisticas: [] 
-            });
-        }
-
-        // Acciones de traders
-        const traders = await queryDB(`
-            SELECT m.nombre AS mercado, SUM(p.acciones) AS total
-            FROM Portafolio p
-            INNER JOIN Usuario u ON p.id = u.id_portafolio
-            INNER JOIN Empresa e ON p.id_empresa = e.id
-            INNER JOIN Mercado m ON e.id_mercado = m.id
-            WHERE p.acciones > 0 AND u.rol = 'Trader'
-            GROUP BY m.nombre
-        `);
-
-        // Acciones de admins
-        const admins = await queryDB(`
-            SELECT m.nombre AS mercado, SUM(p.acciones) AS total
-            FROM Portafolio p
-            INNER JOIN Usuario u ON p.id = u.id_portafolio
-            INNER JOIN Empresa e ON p.id_empresa = e.id
-            INNER JOIN Mercado m ON e.id_mercado = m.id
-            WHERE p.acciones > 0 AND u.rol = 'Admin'
-            GROUP BY m.nombre
-        `);
-
-        // Total por mercado
-        const totales = await queryDB(`
-            SELECT m.nombre AS mercado, SUM(p.acciones) AS total
-            FROM Portafolio p
-            INNER JOIN Usuario u ON p.id = u.id_portafolio
-            INNER JOIN Empresa e ON p.id_empresa = e.id
-            INNER JOIN Mercado m ON e.id_mercado = m.id
-            WHERE p.acciones > 0
-            GROUP BY m.nombre
-        `);
-
-        // Combinar resultados
-        const estadisticas = [];
-        for (let i = 0; i < totales.length; i++) {
-            const mercado = totales[i].mercado;
-            const total = totales[i].total;
-
-            let acciones_traders = 0;
-            let acciones_admins = 0;
-
-            // Buscar traders
-            for (let j = 0; j < traders.length; j++) {
-                if (traders[j].mercado === mercado) {
-                    acciones_traders = traders[j].total;
-                    break;
-                }
-            }
-
-            // Buscar admins
-            for (let k = 0; k < admins.length; k++) {
-                if (admins[k].mercado === mercado) {
-                    acciones_admins = admins[k].total;
-                    break;
-                }
-            }
-
-            const porcentaje_traders = (acciones_traders / total * 100).toFixed(2);
-            const porcentaje_admins = (acciones_admins / total * 100).toFixed(2);
-
-            estadisticas.push({
-                mercado: mercado,
-                acciones_traders: acciones_traders,
-                acciones_administracion: acciones_admins,
-                total_acciones: total,
-                porcentaje_traders: porcentaje_traders,
-                porcentaje_administracion: porcentaje_admins
-            });
-        }
-
-        res.json({ estadisticas: estadisticas });
-
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'Error al obtener estadísticas' });
+    if (!base || base.length === 0) {
+    return res.status(200).json({ message: 'sin posiciones para calcular', estadisticas: [] });
     }
-}
 
+    // Acciones en portafolios de traders por mercado
+    const rowsTraders = await queryDB(`
+    SELECT 
+        m.nombre AS mercado, 
+        SUM(p.acciones) AS acciones_traders
+    FROM Portafolio p
+    INNER JOIN Usuario u ON p.id = u.id_portafolio
+    INNER JOIN Empresa e ON p.id_empresa = e.id
+    INNER JOIN Mercado m ON e.id_mercado = m.id
+    WHERE p.acciones > 0 AND u.rol = 'Trader'
+    GROUP BY m.nombre
+    `);
+
+    // Acciones en portafolios de admins por mercado
+    const rowsAdmins = await queryDB(`
+    SELECT 
+        m.nombre AS mercado, 
+        SUM(p.acciones) AS acciones_admins
+    FROM Portafolio p
+    INNER JOIN Usuario u ON p.id = u.id_portafolio
+    INNER JOIN Empresa e ON p.id_empresa = e.id
+    INNER JOIN Mercado m ON e.id_mercado = m.id
+    WHERE p.acciones > 0 AND u.rol = 'Admin'
+    GROUP BY m.nombre
+    `);
+
+    // Indexar para merge rápido
+    const mapTraders = new Map(rowsTraders.map(r => [r.mercado, Number(r.acciones_traders || 0)]));
+    const mapAdmins  = new Map(rowsAdmins.map(r  => [r.mercado, Number(r.acciones_admins  || 0)]));
+
+    // Construir salida
+    const out = [];
+    let sumaTotales = 0;
+
+    for (const row of base) {
+    const mercado   = row.mercado;
+    const total     = Number(row.total_acciones || 0);
+    const tesoreria = Number(row.tesoreria || 0);
+    const traders   = mapTraders.get(mercado) || 0;
+    const admins    = mapAdmins.get(mercado)  || 0;
+
+    if (total <= 0) continue;
+
+    const administracion = admins + tesoreria;
+
+    const porcentaje_traders         = (traders / total) * 100;
+    const porcentaje_administracion  = (administracion / total) * 100;
+
+    out.push({
+        mercado,
+        acciones_traders: traders,
+        acciones_administracion: administracion,
+        total_acciones: total,
+        porcentaje_traders,
+        porcentaje_administracion
+    });
+
+    sumaTotales += total;
+    }
+
+    if (out.length === 0 || sumaTotales === 0) {
+    return res.status(200).json({ message: 'sin posiciones para calcular', estadisticas: [] });
+    }
+
+    res.json({ estadisticas: out });
+
+} catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Error al obtener estadísticas' });
+}
+}
 // Estadísticas por empresa
 export async function getEstadisticasEmpresa(req, res) {
-    const id_mercado = req.query.id_mercado;
+const id_mercado = req.query.id_mercado;
 
-    try {
-        // Verificar si hay posiciones
-        const hayPosiciones = await queryDB(
-            `SELECT COUNT(*) AS total FROM Portafolio WHERE acciones > 0`
-        );
-
-        if (hayPosiciones[0].total === 0) {
-            return res.status(200).json({ 
-                message: 'sin posiciones para calcular',
-                estadisticas: [] 
-            });
-        }
-
-        // Query para traders
-        let queryTraders = `
-            SELECT e.nombre AS empresa, e.ticker, m.nombre AS mercado, SUM(p.acciones) AS total
-            FROM Portafolio p
-            INNER JOIN Usuario u ON p.id = u.id_portafolio
-            INNER JOIN Empresa e ON p.id_empresa = e.id
-            INNER JOIN Mercado m ON e.id_mercado = m.id
-            WHERE p.acciones > 0 AND u.rol = 'Trader'
-        `;
-
-        // Query  para admins
-        let queryAdmins = `
-            SELECT e.nombre AS empresa, e.ticker, m.nombre AS mercado, SUM(p.acciones) AS total
-            FROM Portafolio p
-            INNER JOIN Usuario u ON p.id = u.id_portafolio
-            INNER JOIN Empresa e ON p.id_empresa = e.id
-            INNER JOIN Mercado m ON e.id_mercado = m.id
-            WHERE p.acciones > 0 AND u.rol = 'Admin'
-        `;
-
-        let queryTotal = `
-            SELECT e.nombre AS empresa, e.ticker, m.nombre AS mercado, SUM(p.acciones) AS total
-            FROM Portafolio p
-            INNER JOIN Usuario u ON p.id = u.id_portafolio
-            INNER JOIN Empresa e ON p.id_empresa = e.id
-            INNER JOIN Mercado m ON e.id_mercado = m.id
-            WHERE p.acciones > 0
-        `;
-
-        const params = {};
-        
-        if (id_mercado) {
-            queryTraders = queryTraders + ` AND e.id_mercado = @id_mercado`;
-            queryAdmins = queryAdmins + ` AND e.id_mercado = @id_mercado`;
-            queryTotal = queryTotal + ` AND e.id_mercado = @id_mercado`;
-            params.id_mercado = id_mercado;
-        }
-
-        queryTraders = queryTraders + ` GROUP BY e.nombre, e.ticker, m.nombre`;
-        queryAdmins = queryAdmins + ` GROUP BY e.nombre, e.ticker, m.nombre`;
-        queryTotal = queryTotal + ` GROUP BY e.nombre, e.ticker, m.nombre`;
-
-        const traders = await queryDB(queryTraders, params);
-        const admins = await queryDB(queryAdmins, params);
-        const totales = await queryDB(queryTotal, params);
-
-        // Combinar resultados
-        const estadisticas = [];
-        for (let i = 0; i < totales.length; i++) {
-            const ticker = totales[i].ticker;
-            const total = totales[i].total;
-
-            let acciones_traders = 0;
-            let acciones_admins = 0;
-
-            // Buscar traders
-            for (let j = 0; j < traders.length; j++) {
-                if (traders[j].ticker === ticker) {
-                    acciones_traders = traders[j].total;
-                    break;
-                }
-            }
-
-            // Buscar admins
-            for (let k = 0; k < admins.length; k++) {
-                if (admins[k].ticker === ticker) {
-                    acciones_admins = admins[k].total;
-                    break;
-                }
-            }
-
-            const porcentaje_traders = (acciones_traders / total * 100).toFixed(2);
-            const porcentaje_admins = (acciones_admins / total * 100).toFixed(2);
-
-            estadisticas.push({
-                empresa: totales[i].empresa,
-                ticker: ticker,
-                mercado: totales[i].mercado,
-                acciones_traders: acciones_traders,
-                acciones_administracion: acciones_admins,
-                total_acciones: total,
-                porcentaje_traders: porcentaje_traders,
-                porcentaje_administracion: porcentaje_admins
-            });
-        }
-
-        res.json({ estadisticas: estadisticas });
-
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'Error al obtener estadísticas' });
+try {
+    // Base por empresa con Inventario (denominador y tesorería)
+    let queryBase = `
+    SELECT 
+        e.id,
+        e.nombre AS empresa,
+        e.ticker,
+        m.nombre AS mercado,
+        inv.acciones_totales,
+        inv.acciones_disponibles
+    FROM Empresa e
+    INNER JOIN Mercado m   ON e.id_mercado = m.id
+    INNER JOIN Inventario inv ON inv.id_empresa = e.id
+    `;
+    const params = {};
+    if (id_mercado) {
+    queryBase += ` WHERE e.id_mercado = @id_mercado`;
+    params.id_mercado = id_mercado;
     }
+    queryBase += ` ORDER BY m.nombre, e.nombre`;
+
+    const base = await queryDB(queryBase, params);
+
+    if (!base || base.length === 0) {
+    return res.status(200).json({ message: 'sin posiciones para calcular', estadisticas: [] });
+    }
+
+    // Traders por empresa
+    let queryTraders = `
+    SELECT e.id, SUM(p.acciones) AS acciones_traders
+    FROM Portafolio p
+    INNER JOIN Usuario u ON p.id = u.id_portafolio
+    INNER JOIN Empresa e ON p.id_empresa = e.id
+    WHERE p.acciones > 0 AND u.rol = 'Trader'
+    `;
+    if (id_mercado) {
+    queryTraders += ` AND e.id_mercado = @id_mercado`;
+    }
+    queryTraders += ` GROUP BY e.id`;
+
+    // Admins por empresa
+    let queryAdmins = `
+    SELECT e.id, SUM(p.acciones) AS acciones_admins
+    FROM Portafolio p
+    INNER JOIN Usuario u ON p.id = u.id_portafolio
+    INNER JOIN Empresa e ON p.id_empresa = e.id
+    WHERE p.acciones > 0 AND u.rol = 'Admin'
+    `;
+    if (id_mercado) {
+    queryAdmins += ` AND e.id_mercado = @id_mercado`;
+    }
+    queryAdmins += ` GROUP BY e.id`;
+
+    const rowsTraders = await queryDB(queryTraders, params);
+    const rowsAdmins  = await queryDB(queryAdmins,  params);
+
+    const mapTraders = new Map(rowsTraders.map(r => [r.id, Number(r.acciones_traders || 0)]));
+    const mapAdmins  = new Map(rowsAdmins.map(r  => [r.id, Number(r.acciones_admins  || 0)]));
+
+    const out = [];
+    let sumaTotales = 0;
+
+    for (const r of base) {
+    const empresaId = r.id;
+    const total     = Number(r.acciones_totales || 0);
+    const tesoreria = Number(r.acciones_disponibles || 0);
+    const traders   = mapTraders.get(empresaId) || 0;
+    const admins    = mapAdmins.get(empresaId)  || 0;
+
+    if (total <= 0) continue;
+
+    const administracion = admins + tesoreria;
+
+    const porcentaje_traders         = (traders / total) * 100;
+    const porcentaje_administracion  = (administracion / total) * 100;
+
+    out.push({
+        empresa: r.empresa,
+        ticker: r.ticker,
+        mercado: r.mercado,
+        acciones_traders: traders,
+        acciones_administracion: administracion,
+        total_acciones: total,
+        porcentaje_traders,
+        porcentaje_administracion
+    });
+
+    sumaTotales += total;
+    }
+
+    if (out.length === 0 || sumaTotales === 0) {
+    return res.status(200).json({ message: 'sin posiciones para calcular', estadisticas: [] });
+    }
+
+    res.json({ estadisticas: out });
+
+} catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Error al obtener estadísticas' });
+}
 }
 
 // AUXILIARES
