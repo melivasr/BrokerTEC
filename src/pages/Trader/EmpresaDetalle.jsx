@@ -70,7 +70,7 @@ export default function EmpresaDetalle() {
           // Si hay error, no mostrar el panel de carga
           <div />
         ) : (
-          <div style={{ background: "#fff", padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 900 }}>
+          <div style={{ background: "var(--card-bg)", padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 900 }}>
             <h3>{empresa.nombre} ({empresa.ticker})</h3>
 
             <p><b>Precio actual:</b> {hasInventario ? `$${empresa.precio_actual}` : <span style={{ color: 'orange' }}>Inventario no disponible</span>}</p>

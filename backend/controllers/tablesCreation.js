@@ -41,7 +41,7 @@ export default async function createAllTables() {
     await queryDB(`
       CREATE TABLE Usuario (
         id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-        id_billetera UNIQUEIDENTIFIER NULL,
+        id_billetera UNIQUEIDENTIFIER NULL UNIQUE,
         id_portafolio UNIQUEIDENTIFIER NULL,
         nombre NVARCHAR(120) NOT NULL,
         alias NVARCHAR(40) NOT NULL UNIQUE,

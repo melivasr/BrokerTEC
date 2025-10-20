@@ -137,7 +137,7 @@ export default function Operar() {
       <Sidebar rol="Trader" />
       <main style={{ padding: 24, width: "100%" }}>
         <h2>Operar Empresa</h2>
-        <div style={{ background: "#fff", padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
+        <div style={{ background:"var(--card-bg)", padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
           <p><b>Empresa:</b> {empresa.nombre} ({empresa.ticker})</p>
           <p><b>Precio actual:</b> ${empresa.precio_actual}</p>
           <p><b>Acciones disponibles:</b> {empresa.acciones_disponibles}</p>

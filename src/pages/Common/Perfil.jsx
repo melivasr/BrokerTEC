@@ -28,11 +28,8 @@ export default function Perfil() {
 
   if (!user) return <div>Cargando perfil...</div>;
 
-  // Validaciones
-  // ...
   const validatePassword = (pw) => pw.length >= 6 && /[A-Z]/.test(pw) && /[0-9]/.test(pw);
 
-  // Actualizar datos personales
   const handleUpdate = async (e) => {
     e.preventDefault();
     setError("");
@@ -47,7 +44,6 @@ export default function Perfil() {
     }
   };
 
-  // Eliminar usuario
   const handleDelete = async () => {
     if (!window.confirm("¿Seguro que deseas eliminar tu cuenta?")) return;
     try {
@@ -59,7 +55,6 @@ export default function Perfil() {
     }
   };
 
-  // Cambiar contraseña
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setPwError("");
@@ -82,7 +77,8 @@ export default function Perfil() {
       <Sidebar rol={user.rol} />
       <main style={{ padding: 24, marginLeft: 220, width: "100%" }}>
         <h2>Perfil de Usuario</h2>
-        <div style={{ background: "#fff", padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
+
+        <div className="card" style={{ maxWidth: 500 }}>
           {error && <div style={{ color: "red", marginBottom: 10 }}>{error}</div>}
           {success && <div style={{ color: "green", marginBottom: 10 }}>{success}</div>}
           {!editMode ? (

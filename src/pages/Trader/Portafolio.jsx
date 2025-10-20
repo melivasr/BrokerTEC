@@ -19,13 +19,13 @@ export default function Portafolio() {
         // Suponiendo que empresaService.getPortafolio retorna posiciones y datos de empresa
         const data = await empresaService.getPortafolio();
         setPosiciones(data.posiciones);
-  const w = await getWallet();
+        const w = await getWallet();
         setWallet(w);
-  } catch (err) {
-  console.error('Error loading portafolio:', err);
-  const msg = err?.response?.data?.message || err?.message || 'Error al cargar portafolio';
-  setError(msg);
-  }
+      } catch (err) {
+        console.error('Error loading portafolio:', err);
+        const msg = err?.response?.data?.message || err?.message || 'Error al cargar portafolio';
+        setError(msg);
+      }
       setLoading(false);
     }
     fetchData();
@@ -46,7 +46,7 @@ export default function Portafolio() {
       // Refrescar datos
       const data = await empresaService.getPortafolio();
       setPosiciones(data.posiciones);
-  const w = await getWallet();
+      const w = await getWallet();
       setWallet(w);
     } catch (err) {
       console.error('Error en handleVender:', err);
@@ -69,7 +69,8 @@ export default function Portafolio() {
         <h2>Mi Portafolio</h2>
         {error && <div style={{ color: "red" }}>{error}</div>}
         {success && <div style={{ color: "green" }}>{success}</div>}
-        <table style={{ width: '100%', background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px #eee', marginBottom: 24 }}>
+
+        <table className="table-card">
           <thead>
             <tr>
               <th>Empresa</th>
@@ -121,7 +122,8 @@ export default function Portafolio() {
             ))}
           </tbody>
         </table>
-        <div style={{ background: '#fff', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px #eee', maxWidth: 400 }}>
+
+        <div className="table-card" style={{ maxWidth: 400 }}>
           <b>Total cartera:</b> ${totalCartera.toLocaleString()}<br/>
           <b>Total wallet:</b> ${totalWallet.toLocaleString()}<br/>
           <b>Total general:</b> ${totalGeneral.toLocaleString()}

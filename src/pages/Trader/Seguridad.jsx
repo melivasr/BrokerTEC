@@ -32,7 +32,7 @@ export default function Seguridad() {
     setSuccess("");
     setLoading(true);
     try {
-  await empresaService.liquidarTodo({ id: user.id, password });
+      await empresaService.liquidarTodo({ id: user.id, password });
       setSuccess("Liquidación exitosa. Todas tus posiciones han sido vendidas.");
       setPassword("");
       setConfirming(false);
@@ -47,7 +47,8 @@ export default function Seguridad() {
       <Sidebar rol="Trader" />
       <main style={{ padding: 24, width: "100%" }}>
         <h2>Seguridad</h2>
-        <div style={{ background: "#fff", padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
+
+        <div className="card" style={{ maxWidth: 500 }}>
           <h3>Acciones sensibles</h3>
           <p><b>Último acceso:</b> {lastAccess ? lastAccess : "No disponible"}</p>
           <hr style={{ margin: '24px 0' }} />
@@ -78,6 +79,7 @@ export default function Seguridad() {
           {error && <div style={{ color: 'red', marginTop: 10 }}>{error}</div>}
           {success && <div style={{ color: 'green', marginTop: 10 }}>{success}</div>}
         </div>
+
       </main>
     </div>
   );

@@ -61,7 +61,7 @@ export default function Wallet() {
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: '0 auto', padding: 24, background: '#fff', borderRadius: 8, boxShadow: '0 2px 8px #eee' }}>
+    <div style={{ maxWidth: 500, margin: '0 auto', padding: 24, background: 'var(--card-bg)', borderRadius: 8, boxShadow: '0 2px 8px #eee' }}>
       <Sidebar rol="Trader" />
             <main style={{ padding: 24, width: "90%" }}>
       <h2>Mi Wallet</h2>
