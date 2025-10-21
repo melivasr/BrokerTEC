@@ -57,6 +57,9 @@ export async function getDetalleEmpresa(empresaId) {
 export async function marcarFavorita(empresaId) {
 	return (await axios.post(`/api/empresas/${empresaId}/favorita`, {}, { headers: authHeader() })).data;
 }
+export async function getFavoritas() {
+    return (await axios.get(`/api/empresas/favoritas`, { headers: authHeader() })).data;
+}
 export async function getPanoramaMercados() {
 	return (await axios.get('/api/mercados/panorama', { headers: authHeader() })).data;
 }

@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import { getCurrentUser } from "../../services/authService";
 import { getHomeTraderData } from "../../services/homeTraderService";
+import { getFavoritas } from "../../services/empresaService";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
 export default function HomeTrader() {
   const [user, setUser] = useState(null);
   const [mercados, setMercados] = useState([]);
+  const [favoritas, setFavoritas] = useState([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -43,6 +45,13 @@ export default function HomeTrader() {
         } else {
           setError("Respuesta inesperada del servidor");
         }
+        // traer favoritas del usuario
+        try {
+          const fav = await getFavoritas();
+          setFavoritas(fav || []);
+        } catch (e) {
+          console.warn('No se pudieron cargar favoritas', e);
+        }
       } catch (err) {
         console.error("Error al cargar datos de mercado:", err);
         setError(err?.response?.data?.message || err?.message || "Error al cargar datos de mercado");
@@ -60,6 +69,20 @@ export default function HomeTrader() {
       <Sidebar rol={user.rol} />
       <main style={{ padding: 24, width: "100%" }}>
         <h2>Portada del Trader</h2>
+        {favoritas && favoritas.length > 0 && (
+          <section style={{ marginBottom: 24 }}>
+            <h3>Empresas favoritas</h3>
+            <ul>
+              {favoritas.map(f => (
+                <li key={f.id} style={{ marginBottom: 8 }}>
+                  <b>{f.nombre}</b> ({f.ticker}) - Precio: ${f.precio_actual ?? 'N/A'}
+                  <button onClick={() => window.location.href = `/trader/empresa/${f.id}`} style={{ marginLeft: 8 }}>Ver</button>
+                  <button onClick={() => window.location.href = `/trader/operar/${f.id}`} style={{ marginLeft: 8 }}>Operar</button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {loading && <p>Cargando datos...</p>}
         {error && <div style={{ color: "red" }}>{error}</div>}
         {!loading && !error && mercados.length === 0 && <div>No hay mercados habilitados.</div>}

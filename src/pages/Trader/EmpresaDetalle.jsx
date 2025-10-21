@@ -48,9 +48,16 @@ export default function EmpresaDetalle() {
 
   const handleFavorita = async () => {
     try {
-  await empresaService.marcarFavorita(companyId);
-      setFavorita(true);
+      const resp = await empresaService.marcarFavorita(companyId);
+      // resp: { message, favorita }
+      if (resp && typeof resp.favorita !== 'undefined') {
+        setFavorita(!!resp.favorita);
+      } else {
+        // fallback: toggle
+        setFavorita(prev => !prev);
+      }
     } catch (err) {
+      console.error('Error marcando favorita', err);
       setError('No se pudo marcar como favorita');
     }
   };
@@ -81,7 +88,7 @@ export default function EmpresaDetalle() {
 
             <div style={{ marginTop: 12 }}>
               <button onClick={handleOperar} style={{ marginRight: 12 }}>Operar</button>
-              <button onClick={handleFavorita} disabled={favorita}>{favorita ? 'Favorita' : 'Marcar como favorita'}</button>
+              <button onClick={handleFavorita}>{favorita ? 'Desmarcar como favorita' : 'Marcar como favorita'}</button>
             </div>
 
             <hr style={{ margin: '24px 0' }} />
