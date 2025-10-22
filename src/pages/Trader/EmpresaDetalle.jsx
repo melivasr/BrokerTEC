@@ -68,7 +68,7 @@ export default function EmpresaDetalle() {
   return (
     <div style={{ display: "flex" }}>
       <Sidebar rol="Trader" />
-      <main style={{ padding: 24, width: "100%" }}>
+      <main className="app-main">
         <h2>Detalle de Empresa</h2>
         {error && <div style={{ color: "red" }}>{error}</div>}
         {!empresa && !error ? (
@@ -77,7 +77,7 @@ export default function EmpresaDetalle() {
           // Si hay error, no mostrar el panel de carga
           <div />
         ) : (
-          <div style={{ background: "var(--card-bg)", padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 900 }}>
+          <div className="card container-center">
             <h3>{empresa.nombre} ({empresa.ticker})</h3>
 
             <p><b>Precio actual:</b> {hasInventario ? `$${empresa.precio_actual}` : <span style={{ color: 'orange' }}>Inventario no disponible</span>}</p>
@@ -87,8 +87,8 @@ export default function EmpresaDetalle() {
             <p><b>Mayor tenedor:</b> {empresa.mayor_tenedor_alias ? empresa.mayor_tenedor_alias : 'N/A'}</p>
 
             <div style={{ marginTop: 12 }}>
-              <button onClick={handleOperar} style={{ marginRight: 12 }}>Operar</button>
-              <button onClick={handleFavorita}>{favorita ? 'Desmarcar como favorita' : 'Marcar como favorita'}</button>
+              <button onClick={handleOperar} style={{ marginRight: 12 }} className="small-hide-mobile">Operar</button>
+              <button onClick={handleFavorita} className="btn-block">{favorita ? 'Desmarcar como favorita' : 'Marcar como favorita'}</button>
             </div>
 
             <hr style={{ margin: '24px 0' }} />
@@ -111,11 +111,13 @@ export default function EmpresaDetalle() {
             {(!historico || historico.length === 0) ? (
               <div style={{ color: 'orange' }}>Sin histórico suficiente</div>
             ) : (
-              <ul>
-                {historico.map((h, i) => (
-                  <li key={i}>${h.valor} el {new Date(h.fecha).toLocaleString()}</li>
-                ))}
-              </ul>
+              <div className="table-responsive">
+                <ul className="list-compact">
+                  {historico.map((h, i) => (
+                    <li key={i}>${h.valor} el {new Date(h.fecha).toLocaleString()}</li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         )}

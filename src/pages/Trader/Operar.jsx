@@ -46,7 +46,7 @@ export default function Operar() {
       return (
         <div style={{ display: "flex" }}>
           <Sidebar rol="Trader" />
-          <main style={{ padding: 24, width: "100%" }}>
+          <main className="app-main">
             <h2>Operar Empresa</h2>
             <div style={{ color: 'red' }}>{error}</div>
           </main>
@@ -135,9 +135,9 @@ export default function Operar() {
   return (
     <div style={{ display: "flex" }}>
       <Sidebar rol="Trader" />
-      <main style={{ padding: 24, width: "100%" }}>
+      <main className="app-main">
         <h2>Operar Empresa</h2>
-        <div style={{ background:"var(--card-bg)", padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
+        <div className="card small">
           <p><b>Empresa:</b> {empresa.nombre} ({empresa.ticker})</p>
           <p><b>Precio actual:</b> ${empresa.precio_actual}</p>
           <p><b>Acciones disponibles:</b> {empresa.acciones_disponibles}</p>
@@ -145,7 +145,7 @@ export default function Operar() {
           <p><b>Posición actual:</b> {empresa.posicion_usuario || 0}</p>
           <form onSubmit={handleOperar} style={{ marginTop: 24 }}>
             <label>Acción:</label>
-            <select value={accion} onChange={e => setAccion(e.target.value)} style={{ marginBottom: 12 }}>
+            <select value={accion} onChange={e => setAccion(e.target.value)} className="form-control">
               <option value="Compra">Comprar</option>
               <option value="Venta">Vender</option>
             </select>
@@ -156,10 +156,10 @@ export default function Operar() {
               max={accion === "Compra" ? maxComprable : maxVendible}
               value={cantidad}
               onChange={e => setCantidad(e.target.value)}
-              style={{ width: '100%', padding: 8, marginBottom: 12 }}
+              className="form-control"
               required
             />
-            <button type="submit" disabled={loading} style={{ width: '100%', padding: 10 }}>
+            <button type="submit" disabled={loading} className="btn-block">
               {loading ? 'Procesando...' : accion}
             </button>
           </form>

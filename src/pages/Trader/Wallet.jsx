@@ -117,10 +117,11 @@ export default function Wallet() {
   };
 
   return (
-    <div style={{ maxWidth: 500, margin: '0 auto', padding: 24, background: 'var(--card-bg)', borderRadius: 8, boxShadow: '0 2px 8px #eee' }}>
+    <div style={{ display: 'flex' }}>
       <Sidebar rol="Trader" />
-            <main style={{ padding: 24, width: "90%" }}>
-      <h2>Mi Wallet</h2>
+      <main className="app-main">
+        <div className="card small">
+          <h2>Mi Wallet</h2>
       {error && <div style={{ color: 'red', marginBottom: 10 }}>{error}</div>}
       {success && <div style={{ color: 'green', marginBottom: 10 }}>{success}</div>}
       {wallet ? (
@@ -136,13 +137,15 @@ export default function Wallet() {
           )}
 
           <h3>Historial de recargas</h3>
-          <ul>
-            {wallet.recargas.map((r) => (
-              <li key={r.recarga_id}>
-                +${r.monto} el {new Date(r.fecha_hora).toLocaleString()}
-              </li>
-            ))}
-          </ul>
+          <div className="table-responsive">
+            <ul className="list-compact">
+              {(wallet.recargas || []).map((r) => (
+                <li key={r.recarga_id || Math.random()}>
+                  +${r.monto} el {new Date(r.fecha_hora).toLocaleString()}
+                </li>
+              ))}
+            </ul>
+          </div>
 
           <form onSubmit={handleRecargar} style={{ marginTop: 24 }}>
             <label style={{ display: 'block', marginBottom: 8 }}>Monto a recargar</label>
@@ -154,11 +157,11 @@ export default function Wallet() {
               value={monto}
               onChange={e => setMonto(e.target.value)}
               placeholder={`Máximo: $${(wallet.limite_diario - wallet.consumo_diario).toFixed(2)}`}
-              style={{ width: '100%', padding: 8, marginBottom: 12 }}
+              className="form-control"
               required
               disabled={!!(wallet.bloqueo_hasta && bloqueoRestante > 0)}
             />
-            <button type="submit" disabled={loading || !!(wallet.bloqueo_hasta && bloqueoRestante > 0)} style={{ width: '100%', padding: 10 }}>
+            <button type="submit" disabled={loading || !!(wallet.bloqueo_hasta && bloqueoRestante > 0)} className="btn-block">
               {loading ? 'Procesando...' : 'Recargar'}
             </button>
             <div style={{ marginTop: 8, color: '#555' }}>
@@ -169,6 +172,7 @@ export default function Wallet() {
       ) : (
         <p>Cargando wallet...</p>
       )}
+        </div>
       </main>
     </div>
   );

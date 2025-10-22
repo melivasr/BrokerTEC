@@ -45,7 +45,7 @@ export default function Seguridad() {
   return (
     <div style={{ display: "flex" }}>
       <Sidebar rol="Trader" />
-      <main style={{ padding: 24, width: "100%" }}>
+      <main className="app-main">
         <h2>Seguridad</h2>
 
         <div className="card" style={{ maxWidth: 500 }}>
@@ -55,7 +55,7 @@ export default function Seguridad() {
           <h4>Liquidar todo</h4>
           <p>Esta acción venderá todas tus posiciones al precio actual. Es irreversible y será auditada.</p>
           {!confirming ? (
-            <button onClick={() => setConfirming(true)} style={{ background: 'red', color: 'white', padding: '10px 20px' }}>
+            <button onClick={() => setConfirming(true)} style={{ background: 'red', color: 'white' }} className="btn-block">
               Liquidar todo
             </button>
           ) : (
@@ -66,12 +66,12 @@ export default function Seguridad() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                style={{ width: '100%', padding: 8, marginBottom: 12 }}
+                className="form-control"
               />
-              <button type="submit" disabled={loading} style={{ background: 'red', color: 'white', padding: '10px 20px' }}>
+              <button type="submit" disabled={loading} style={{ background: 'red', color: 'white' }} className="btn-block">
                 {loading ? 'Procesando...' : 'Confirmar liquidación'}
               </button>
-              <button type="button" onClick={() => setConfirming(false)} style={{ marginLeft: 12 }}>
+              <button type="button" onClick={() => setConfirming(false)} style={{ marginTop: 8 }} className="btn-block">
                 Cancelar
               </button>
             </form>
