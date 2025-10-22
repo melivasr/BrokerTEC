@@ -96,6 +96,19 @@ export default async function seedData() {
     const password6 = await bcrypt.hash("admin123", 10);
     const password7 = await bcrypt.hash("admin456", 10);
 
+    const billeterasList = await queryDB(`SELECT id, categoria FROM Billetera ORDER BY categoria`);
+
+    const bill_junior1 = billeterasList.find(b => b.categoria === 'Junior');
+    const bill_junior2 = billeterasList.filter(b => b.categoria === 'Junior')[1];
+    const bill_junior3 = billeterasList.filter(b => b.categoria === 'Junior')[2];
+    const bill_mid1 = billeterasList.find(b => b.categoria === 'Mid');
+    const bill_mid2 = billeterasList.filter(b => b.categoria === 'Mid')[1];
+    const bill_mid3 = billeterasList.filter(b => b.categoria === 'Mid')[2];
+    const bill_senior1 = billeterasList.find(b => b.categoria === 'Senior');
+    const bill_senior2 = billeterasList.filter(b => b.categoria === 'Senior')[1];
+    const bill_senior3 = billeterasList.filter(b => b.categoria === 'Senior')[2];
+
+
     await queryDB(`
       INSERT INTO Usuario (id, id_billetera, id_portafolio, nombre, alias, habilitado, direccion, pais_origen, telefono, correo, rol, contrasena_hash) VALUES
       (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Junior' AND fondos=10000), (SELECT TOP 1 id FROM Portafolio WHERE acciones=50), 'Juan Pérez', 'juanp', 1, 'San José, Costa Rica', 'Costa Rica', '+50688889999', 'juan@example.com', 'Trader', @hash1),

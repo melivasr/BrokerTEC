@@ -1,6 +1,7 @@
 import { queryDB } from "../config/db.js";
 import sql from 'mssql';
 import { dbConfig } from '../config/db.js';
+import jwt from 'jsonwebtoken';
 
 // Obtener todas las empresas
 export async function getEmpresas(req, res) {
@@ -99,11 +100,79 @@ export async function getEmpresaDetalle(req, res) {
             mayor_tenedor_alias: mayor_tenedor_alias,
         };
 
+        // Determinar si el usuario autenticado marcó como favorita (si viene token)
+        let favoritaFlag = false;
+        try {
+            const authHeader = req.headers && req.headers.authorization;
+            if (authHeader) {
+                const token = authHeader.split(' ')[1];
+                if (token) {
+                    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                    const userId = decoded?.id;
+                    if (userId) {
+                        const fav = await queryDB('SELECT 1 FROM Empresa_Favorita WHERE id_empresa = @id AND id_usuario = @userId', { id, userId });
+                        if (fav && fav.length > 0) favoritaFlag = true;
+                    }
+                }
+            }
+        } catch (e) {
+            // no bloquear la vista si el token es inválido; simplemente ignorar
+            console.warn('No se pudo verificar token en getEmpresaDetalle:', e?.message || e);
+        }
+
         // Responder
-        res.json({ empresa, historico: historicoPrevio, favorita: false });
+        res.json({ empresa, historico: historicoPrevio, favorita: favoritaFlag });
     } catch (err) {
         console.error('Error en getEmpresaDetalle:', err);
         res.status(500).json({ message: 'Error al obtener detalle de empresa', error: err.message });
+    }
+}
+
+// Marcar/Desmarcar empresa como favorita (toggle) para el usuario autenticado
+export async function marcarFavorita(req, res) {
+    const { id } = req.params; // id de la empresa
+    const user = req.user;
+    if (!user || !user.id) return res.status(401).json({ message: 'Usuario no autenticado' });
+
+    // validar guid
+    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!id || !guidRegex.test(id)) return res.status(400).json({ message: 'ID de empresa inválido' });
+
+    try {
+        // verificar si ya está marcada
+        const exists = await queryDB('SELECT 1 FROM Empresa_Favorita WHERE id_empresa = @id AND id_usuario = @userId', { id, userId: user.id });
+        if (exists && exists.length > 0) {
+            // eliminar favorita
+            await queryDB('DELETE FROM Empresa_Favorita WHERE id_empresa = @id AND id_usuario = @userId', { id, userId: user.id });
+            return res.json({ message: 'Desmarcada', favorita: false });
+        }
+        // insertar favorita
+        await queryDB('INSERT INTO Empresa_Favorita (id_empresa, id_usuario) VALUES (@id, @userId)', { id, userId: user.id });
+        return res.json({ message: 'Marcada', favorita: true });
+    } catch (err) {
+        console.error('Error en marcarFavorita:', err);
+        return res.status(500).json({ message: 'Error marcando favorita', error: err.message });
+    }
+}
+
+// Obtener empresas favoritas del usuario
+export async function getFavoritas(req, res) {
+    const user = req.user;
+    if (!user || !user.id) return res.status(401).json({ message: 'Usuario no autenticado' });
+    try {
+        // Unir Empresa_Favorita con Empresa y opcionalmente Inventario para datos de precio/capitalizacion
+        const rows = await queryDB(
+            `SELECT e.id, e.nombre, e.ticker, i.precio AS precio_actual, i.capitalizacion
+             FROM Empresa_Favorita ef
+             JOIN Empresa e ON e.id = ef.id_empresa
+             LEFT JOIN Inventario i ON i.id_empresa = e.id
+             WHERE ef.id_usuario = @userId`,
+            { userId: user.id }
+        );
+        return res.json(rows || []);
+    } catch (err) {
+        console.error('Error en getFavoritas:', err);
+        return res.status(500).json({ message: 'Error obteniendo favoritas', error: err.message });
     }
 }
 

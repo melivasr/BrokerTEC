@@ -25,7 +25,8 @@ export default async function createAllTables() {
         categoria NVARCHAR(20) NOT NULL CHECK (categoria IN ('Junior','Mid','Senior')),
         fondos DECIMAL(19,4) NOT NULL DEFAULT 0,
         limite_diario DECIMAL(19,4) NOT NULL DEFAULT 0,
-        consumo DECIMAL(19,4) NOT NULL DEFAULT 0
+        consumo DECIMAL(19,4) NOT NULL DEFAULT 0,
+        bloqueo_hasta DATETIME2(3) NULL
       );
     `);
 
@@ -41,7 +42,7 @@ export default async function createAllTables() {
     await queryDB(`
       CREATE TABLE Usuario (
         id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-        id_billetera UNIQUEIDENTIFIER NULL,
+        id_billetera UNIQUEIDENTIFIER NULL UNIQUE,
         id_portafolio UNIQUEIDENTIFIER NULL,
         nombre NVARCHAR(120) NOT NULL,
         alias NVARCHAR(40) NOT NULL UNIQUE,
@@ -118,6 +119,8 @@ export default async function createAllTables() {
         fondos DECIMAL(19,4) NOT NULL,
         limite_diario DECIMAL(19,4) NOT NULL,
         consumo DECIMAL(19,4) NOT NULL,
+        bloqueo_hasta DATETIME2(3) NULL,
+        recarga_monto DECIMAL(19,4) NULL,
         PRIMARY KEY (fecha, id_billetera),
         CONSTRAINT FK_BH_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id)
       );
@@ -132,6 +135,16 @@ export default async function createAllTables() {
         PRIMARY KEY (fecha, id_portafolio, id_empresa),
         CONSTRAINT FK_PH_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id),
         CONSTRAINT FK_PH_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+      );
+    `);
+
+    await queryDB(`
+      CREATE TABLE Empresa_Favorita (
+        id_empresa UNIQUEIDENTIFIER NOT NULL,
+        id_usuario UNIQUEIDENTIFIER NOT NULL,
+        PRIMARY KEY (id_empresa, id_usuario),
+        CONSTRAINT FK_EF_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id),
+        CONSTRAINT FK_EF_Usuario FOREIGN KEY (id_usuario) REFERENCES Usuario(id)
       );
     `);
 
