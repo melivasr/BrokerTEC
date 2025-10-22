@@ -1,7 +1,8 @@
 import axios from "axios";
 import { authHeader } from "./authService";
 
-const API_URL = "http://localhost:4000/api/wallet"; // Ajusta la ruta según tu backend
+const BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+const API_URL = `${BASE}/api/wallet`; // Ajusta la ruta según tu backend
 
 // Obtener info del wallet
 export async function getWallet() {
