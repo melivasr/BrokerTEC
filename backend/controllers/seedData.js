@@ -110,25 +110,23 @@ export default async function seedData() {
 
 
     await queryDB(`
-    INSERT INTO Usuario (id, id_billetera, id_portafolio, nombre, alias, habilitado, direccion, pais_origen, telefono, correo, rol, contrasena_hash)
-    VALUES
-    (NEWID(), '${bill_junior1.id}', (SELECT TOP 1 id FROM Portafolio WHERE acciones=50), 'Juan Pérez', 'juanp', 1, 'San José, Costa Rica', 'Costa Rica', '+50688889999', 'juan@example.com', 'Trader', @hash1),
-    (NEWID(), '${bill_junior2.id}', (SELECT TOP 1 id FROM Portafolio WHERE acciones=30), 'Ana Gómez', 'anag', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50687771122', 'ana@example.com', 'Trader', @hash2),
-    (NEWID(), '${bill_mid1.id}', (SELECT TOP 1 id FROM Portafolio WHERE acciones=40), 'Luis Fernández', 'luisf', 1, 'Heredia, Costa Rica', 'Costa Rica', '+50686662233', 'luis@example.com', 'Trader', @hash3),
-    (NEWID(), '${bill_mid2.id}', NULL, 'María López', 'marial', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50687776655', 'maria@example.com', 'Analista', @hash4),
-    (NEWID(), '${bill_mid3.id}', NULL, 'Carlos Ruiz', 'carlosr', 1, 'Heredia, Costa Rica', 'Costa Rica', '+50686663344', 'carlos@example.com', 'Analista', @hash5),
-    (NEWID(), '${bill_senior1.id}', NULL, 'Carmen Soto', 'carmens', 1, 'San José, Costa Rica', 'Costa Rica', '+50685554433', 'carmen@example.com', 'Admin', @hash6),
-    (NEWID(), '${bill_senior2.id}', NULL, 'Diego Vargas', 'diegov', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50684443322', 'diego@example.com', 'Admin', @hash7);
-  `, {
-    hash1: password1,
-    hash2: password2,
-    hash3: password3,
-    hash4: password4,
-    hash5: password5,
-    hash6: password6,
-    hash7: password7,
-  });
-
+      INSERT INTO Usuario (id, id_billetera, id_portafolio, nombre, alias, habilitado, direccion, pais_origen, telefono, correo, rol, contrasena_hash) VALUES
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Junior' AND fondos=10000), (SELECT TOP 1 id FROM Portafolio WHERE acciones=50), 'Juan Pérez', 'juanp', 1, 'San José, Costa Rica', 'Costa Rica', '+50688889999', 'juan@example.com', 'Trader', @hash1),
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Junior' AND fondos=12000), (SELECT TOP 1 id FROM Portafolio WHERE acciones=30), 'Ana Gómez', 'anag', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50687771122', 'ana@example.com', 'Trader', @hash2),
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Mid' AND fondos=50000), (SELECT TOP 1 id FROM Portafolio WHERE acciones=40), 'Luis Fernández', 'luisf', 1, 'Heredia, Costa Rica', 'Costa Rica', '+50686662233', 'luis@example.com', 'Trader', @hash3),
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Mid' AND fondos=60000), NULL, 'María López', 'marial', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50687776655', 'maria@example.com', 'Analista', @hash4),
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Mid' AND fondos=55000), NULL, 'Carlos Ruiz', 'carlosr', 1, 'Heredia, Costa Rica', 'Costa Rica', '+50686663344', 'carlos@example.com', 'Analista', @hash5),
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Senior' AND fondos=200000), NULL, 'Carmen Soto', 'carmens', 1, 'San José, Costa Rica', 'Costa Rica', '+50685554433', 'carmen@example.com', 'Admin', @hash6),
+      (NEWID(), (SELECT TOP 1 id FROM Billetera WHERE categoria='Senior' AND fondos=180000), NULL, 'Diego Vargas', 'diegov', 1, 'Alajuela, Costa Rica', 'Costa Rica', '+50684443322', 'diego@example.com', 'Admin', @hash7);
+    `, {
+      hash1: password1,
+      hash2: password2,
+      hash3: password3,
+      hash4: password4,
+      hash5: password5,
+      hash6: password6,
+      hash7: password7,
+    });
     console.log("Datos insertados en Usuario");
 
     //  Mercado_Habilitado 

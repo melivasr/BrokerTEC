@@ -77,8 +77,7 @@ export default function Perfil() {
       <Sidebar rol={user.rol} />
       <main className="app-main">
         <h2>Perfil de Usuario</h2>
-
-        <div className="card" style={{ maxWidth: 500 }}>
+        <div style={{ background: 'var(--card-bg)', padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
           {error && <div style={{ color: "red", marginBottom: 10 }}>{error}</div>}
           {success && <div style={{ color: "green", marginBottom: 10 }}>{success}</div>}
           {!editMode ? (
