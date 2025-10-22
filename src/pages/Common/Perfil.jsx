@@ -28,24 +28,12 @@ export default function Perfil() {
 
   if (!user) return <div>Cargando perfil...</div>;
 
-  // Validaciones
-  const validateEmail = (email) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
-  const validateAlias = (alias) => alias.length >= 3;
   const validatePassword = (pw) => pw.length >= 6 && /[A-Z]/.test(pw) && /[0-9]/.test(pw);
 
-  // Actualizar datos personales
   const handleUpdate = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
-    if (!validateAlias(form.alias)) {
-      setError("Alias debe tener al menos 3 caracteres.");
-      return;
-    }
-    if (!validateEmail(form.correo)) {
-      setError("Correo inválido.");
-      return;
-    }
     try {
       await updateUser(form);
       setSuccess("Datos actualizados correctamente.");
@@ -56,11 +44,10 @@ export default function Perfil() {
     }
   };
 
-  // Eliminar usuario
   const handleDelete = async () => {
     if (!window.confirm("¿Seguro que deseas eliminar tu cuenta?")) return;
     try {
-      await deleteUser(user.usuario_id);
+      await deleteUser(user.id);
       setSuccess("Cuenta eliminada. Redirigiendo...");
       setTimeout(() => window.location.href = "/login", 2000);
     } catch (err) {
@@ -68,7 +55,6 @@ export default function Perfil() {
     }
   };
 
-  // Cambiar contraseña
   const handleChangePassword = async (e) => {
     e.preventDefault();
     setPwError("");
@@ -78,7 +64,7 @@ export default function Perfil() {
       return;
     }
     try {
-      await changePassword({ usuario_id: user.usuario_id, old: passwords.old, new: passwords.new });
+      await changePassword({ id: user.id, old: passwords.old, new: passwords.new });
       setPwSuccess("Contraseña cambiada correctamente.");
       setPasswords({ old: "", new: "" });
     } catch (err) {
@@ -89,9 +75,9 @@ export default function Perfil() {
   return (
     <div style={{ display: "flex" }}>
       <Sidebar rol={user.rol} />
-      <main style={{ padding: 24, marginLeft: 220, width: "100%" }}>
+      <main className="app-main">
         <h2>Perfil de Usuario</h2>
-        <div style={{ background: "#fff", padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
+        <div style={{ background: 'var(--card-bg)', padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
           {error && <div style={{ color: "red", marginBottom: 10 }}>{error}</div>}
           {success && <div style={{ color: "green", marginBottom: 10 }}>{success}</div>}
           {!editMode ? (
@@ -103,51 +89,51 @@ export default function Perfil() {
               <p><b>Dirección:</b> {user.direccion}</p>
               <p><b>País de origen:</b> {user.pais_origen}</p>
               <p><b>Teléfono:</b> {user.telefono}</p>
-              <button onClick={() => setEditMode(true)} style={{ marginTop: 12 }}>Editar datos</button>
-              <button onClick={handleDelete} style={{ marginLeft: 12, color: 'red' }}>Eliminar cuenta</button>
+              <button onClick={() => setEditMode(true)} style={{ marginTop: 12 }} className="btn-block">Editar datos</button>
+              <button onClick={handleDelete} style={{ marginLeft: 12, color: 'red' }} className="small-hide-mobile">Eliminar cuenta</button>
             </>
           ) : (
             <form onSubmit={handleUpdate}>
               <h3>Editar datos personales</h3>
               <label>Alias</label>
-              <input type="text" value={form.alias} onChange={e => setForm({ ...form, alias: e.target.value })} required />
+              <input className="form-control" type="text" value={form.alias} onChange={e => setForm({ ...form, alias: e.target.value })} required />
               <label>Nombre</label>
-              <input type="text" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
+              <input className="form-control" type="text" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} required />
               <label>Correo</label>
-              <input type="email" value={form.correo} onChange={e => setForm({ ...form, correo: e.target.value })} required />
+              <input className="form-control" type="email" value={form.correo} onChange={e => setForm({ ...form, correo: e.target.value })} required />
               <label>Dirección</label>
-              <input type="text" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} />
+              <input className="form-control" type="text" value={form.direccion} onChange={e => setForm({ ...form, direccion: e.target.value })} />
               <label>País de origen</label>
-              <input type="text" value={form.pais_origen} onChange={e => setForm({ ...form, pais_origen: e.target.value })} />
+              <input className="form-control" type="text" value={form.pais_origen} onChange={e => setForm({ ...form, pais_origen: e.target.value })} />
               <label>Teléfono</label>
-              <input type="text" value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} />
-              <button type="submit" style={{ marginTop: 12 }}>Guardar cambios</button>
-              <button type="button" onClick={() => setEditMode(false)} style={{ marginLeft: 12 }}>Cancelar</button>
+              <input className="form-control" type="text" value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} />
+              <button type="submit" style={{ marginTop: 12 }} className="btn-block">Guardar cambios</button>
+              <button type="button" onClick={() => setEditMode(false)} style={{ marginLeft: 12 }} className="small-hide-mobile">Cancelar</button>
             </form>
           )}
           <hr style={{ margin: '24px 0' }} />
           <form onSubmit={handleChangePassword}>
             <h3>Cambiar contraseña</h3>
             <input
+              className="form-control"
               type={showPassword ? "text" : "password"}
               value={passwords.old}
               onChange={e => setPasswords({ ...passwords, old: e.target.value })}
               placeholder="Contraseña actual"
               required
-              style={{ marginBottom: 8 }}
             />
             <input
+              className="form-control"
               type={showPassword ? "text" : "password"}
               value={passwords.new}
               onChange={e => setPasswords({ ...passwords, new: e.target.value })}
               placeholder="Nueva contraseña"
               required
-              style={{ marginBottom: 8 }}
             />
             <label>
               <input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} /> Mostrar contraseñas
             </label>
-            <button type="submit" style={{ marginTop: 12 }}>Cambiar contraseña</button>
+            <button type="submit" style={{ marginTop: 12 }} className="btn-block">Cambiar contraseña</button>
             {pwError && <div style={{ color: "red", marginTop: 8 }}>{pwError}</div>}
             {pwSuccess && <div style={{ color: "green", marginTop: 8 }}>{pwSuccess}</div>}
           </form>

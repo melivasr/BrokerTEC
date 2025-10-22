@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { getCurrentUser } from "../../services/authService";
-import empresaService from "../../services/empresaService";
+import * as empresaService from "../../services/empresaService";
 
 export default function Seguridad() {
   const [user, setUser] = useState(null);
@@ -32,7 +32,7 @@ export default function Seguridad() {
     setSuccess("");
     setLoading(true);
     try {
-      await empresaService.liquidarTodo({ usuario_id: user.usuario_id, password });
+      await empresaService.liquidarTodo({ id: user.id, password });
       setSuccess("Liquidación exitosa. Todas tus posiciones han sido vendidas.");
       setPassword("");
       setConfirming(false);
@@ -45,16 +45,17 @@ export default function Seguridad() {
   return (
     <div style={{ display: "flex" }}>
       <Sidebar rol="Trader" />
-      <main style={{ padding: 24, width: "100%" }}>
+      <main className="app-main">
         <h2>Seguridad</h2>
-        <div style={{ background: "#fff", padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
+
+        <div className="card" style={{ maxWidth: 500 }}>
           <h3>Acciones sensibles</h3>
           <p><b>Último acceso:</b> {lastAccess ? lastAccess : "No disponible"}</p>
           <hr style={{ margin: '24px 0' }} />
           <h4>Liquidar todo</h4>
           <p>Esta acción venderá todas tus posiciones al precio actual. Es irreversible y será auditada.</p>
           {!confirming ? (
-            <button onClick={() => setConfirming(true)} style={{ background: 'red', color: 'white', padding: '10px 20px' }}>
+            <button onClick={() => setConfirming(true)} style={{ background: 'red', color: 'white' }} className="btn-block">
               Liquidar todo
             </button>
           ) : (
@@ -65,12 +66,12 @@ export default function Seguridad() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
-                style={{ width: '100%', padding: 8, marginBottom: 12 }}
+                className="form-control"
               />
-              <button type="submit" disabled={loading} style={{ background: 'red', color: 'white', padding: '10px 20px' }}>
+              <button type="submit" disabled={loading} style={{ background: 'red', color: 'white' }} className="btn-block">
                 {loading ? 'Procesando...' : 'Confirmar liquidación'}
               </button>
-              <button type="button" onClick={() => setConfirming(false)} style={{ marginLeft: 12 }}>
+              <button type="button" onClick={() => setConfirming(false)} style={{ marginTop: 8 }} className="btn-block">
                 Cancelar
               </button>
             </form>
@@ -78,6 +79,7 @@ export default function Seguridad() {
           {error && <div style={{ color: 'red', marginTop: 10 }}>{error}</div>}
           {success && <div style={{ color: 'green', marginTop: 10 }}>{success}</div>}
         </div>
+
       </main>
     </div>
   );

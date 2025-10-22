@@ -1,7 +1,6 @@
-
-
 import axios from "axios";
-const API_URL = "http://localhost:4000/api/auth"; // Ajusta a tu backend
+const BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+const API_URL = `${BASE}/api/auth`; // Ajusta a tu backend
 
 // Registrar usuario
 export async function register({ alias, nombre, direccion, pais_origen, telefono, correo, password, rol }) {
@@ -69,7 +68,7 @@ export async function updateUser(data) {
   try {
     const user = getCurrentUser();
     const response = await axios.put(
-      `http://localhost:4000/api/auth/${user.usuario_id}`,
+      `${BASE}/api/auth/${user.id}`,
       data,
       { headers: authHeader() }
     );
@@ -80,10 +79,10 @@ export async function updateUser(data) {
 }
 
 // Eliminar usuario
-export async function deleteUser(usuario_id) {
+export async function deleteUser(id) {
   try {
     const response = await axios.delete(
-      `http://localhost:4000/api/auth/${usuario_id}`,
+      `${BASE}/api/auth/${id}`,
       { headers: authHeader() }
     );
     return response.data;
@@ -93,10 +92,10 @@ export async function deleteUser(usuario_id) {
 }
 
 // Cambiar contraseña
-export async function changePassword({ usuario_id, old, new: newPassword }) {
+export async function changePassword({ id, old, new: newPassword }) {
   try {
     const response = await axios.post(
-      `http://localhost:4000/api/auth/${usuario_id}/change-password`,
+      `${BASE}/api/auth/${id}/change-password`,
       { old, new: newPassword },
       { headers: authHeader() }
     );

@@ -1,166 +1,154 @@
-import { queryDB } from '../config/db.js';
-
+import { queryDB } from "../config/db.js";
 export default async function createAllTables() {
   try {
-
-    await queryDB(`
-      CREATE TABLE Categoria (
-        categoria_id   INT IDENTITY(1,1) PRIMARY KEY,
-        nombre         VARCHAR(40) NOT NULL UNIQUE,
-        limite_diario  DECIMAL(19,4) NOT NULL CHECK (limite_diario >= 0)
-      );
-    `);
-
     await queryDB(`
       CREATE TABLE Mercado (
-        mercado_id INT IDENTITY(1,1) PRIMARY KEY,
-        nombre     VARCHAR(100) NOT NULL UNIQUE,
-        estado     VARCHAR(20) NOT NULL DEFAULT 'Activo'
-      );
-    `);
-
-    await queryDB(`
-      CREATE TABLE Usuario (
-        usuario_id       INT IDENTITY(1,1) PRIMARY KEY,
-        alias            VARCHAR(40) NOT NULL UNIQUE,
-        nombre           NVARCHAR(120) NOT NULL,
-        direccion        NVARCHAR(200),
-        pais_origen      NVARCHAR(80),
-        telefono         NVARCHAR(40),
-        correo           VARCHAR(120) NOT NULL UNIQUE,
-        contrasena_hash  VARCHAR(255) NOT NULL,
-        rol              VARCHAR(20) NOT NULL CHECK (rol IN ('Admin','Trader','Analista')),
-        estado           VARCHAR(20) NOT NULL DEFAULT 'Activo'
+        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        nombre NVARCHAR(100) NOT NULL UNIQUE
       );
     `);
 
     await queryDB(`
       CREATE TABLE Empresa (
-        empresa_id                 INT IDENTITY(1,1) PRIMARY KEY,
-        nombre                     NVARCHAR(160) NOT NULL,
-        mercado_id                 INT NOT NULL,
-        ticker                     VARCHAR(16) NOT NULL,
-        cantidad_acciones_totales  INT NOT NULL CHECK (cantidad_acciones_totales >= 0),
-        acciones_disponibles       INT,
-        precio_accion              DECIMAL(19,4),
-        capitalizacion             DECIMAL(19,4),
-        estado                     VARCHAR(20) NOT NULL DEFAULT 'Activa',
-        CONSTRAINT FK_Empresa_Mercado FOREIGN KEY (mercado_id) REFERENCES Mercado(mercado_id),
-        CONSTRAINT UQ_Empresa_Mercado_Nombre UNIQUE (mercado_id, nombre),
-        CONSTRAINT UQ_Empresa_Mercado_Ticker UNIQUE (mercado_id, ticker)
+        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        id_mercado UNIQUEIDENTIFIER NOT NULL,
+        nombre NVARCHAR(160) NOT NULL,
+        ticker CHAR(6) NOT NULL,
+        CONSTRAINT FK_Empresa_Mercado FOREIGN KEY (id_mercado) REFERENCES Mercado(id),
+        CONSTRAINT UQ_Empresa_Ticker UNIQUE (id_mercado, ticker)
       );
     `);
 
     await queryDB(`
-      CREATE TABLE Wallet (
-        wallet_id      INT IDENTITY(1,1) PRIMARY KEY,
-        usuario_id     INT NOT NULL,
-        saldo          DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
-        categoria_id   INT NOT NULL,
-        consumo_diario DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
-        CONSTRAINT FK_Wallet_Usuario FOREIGN KEY (usuario_id) REFERENCES Usuario(usuario_id),
-        CONSTRAINT FK_Wallet_Categoria FOREIGN KEY (categoria_id) REFERENCES Categoria(categoria_id),
-        CONSTRAINT UQ_Wallet UNIQUE (usuario_id, categoria_id)
+      CREATE TABLE Billetera (
+        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        categoria NVARCHAR(20) NOT NULL CHECK (categoria IN ('Junior','Mid','Senior')),
+        fondos DECIMAL(19,4) NOT NULL DEFAULT 0,
+        limite_diario DECIMAL(19,4) NOT NULL DEFAULT 0,
+        consumo DECIMAL(19,4) NOT NULL DEFAULT 0,
+        bloqueo_hasta DATETIME2(3) NULL
       );
     `);
 
     await queryDB(`
-      CREATE TABLE Recarga (
-        recarga_id INT IDENTITY(1,1) PRIMARY KEY,
-        wallet_id  INT NOT NULL,
-        monto      DECIMAL(19,4) NOT NULL CHECK (monto > 0),
-        fecha_hora DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
-        CONSTRAINT FK_Recarga_Wallet FOREIGN KEY (wallet_id) REFERENCES Wallet(wallet_id)
+      CREATE TABLE Portafolio (
+        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        id_empresa UNIQUEIDENTIFIER NOT NULL,
+        acciones INT NOT NULL CHECK (acciones >= 0),
+        CONSTRAINT FK_Portafolio_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
       );
     `);
 
     await queryDB(`
-      CREATE TABLE Precio_Historico (
-        empresa_id INT NOT NULL,
-        ts_utc     DATETIME2(3) NOT NULL,
-        precio     DECIMAL(19,4) NOT NULL CHECK (precio > 0),
-        PRIMARY KEY (empresa_id, ts_utc),
-        CONSTRAINT FK_Precio_Empresa FOREIGN KEY (empresa_id) REFERENCES Empresa(empresa_id)
+      CREATE TABLE Usuario (
+        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        id_billetera UNIQUEIDENTIFIER NULL UNIQUE,
+        id_portafolio UNIQUEIDENTIFIER NULL,
+        nombre NVARCHAR(120) NOT NULL,
+        alias NVARCHAR(40) NOT NULL UNIQUE,
+        habilitado BIT NOT NULL DEFAULT 1,
+        deshabilitado_justificacion NVARCHAR(255) NULL,
+        direccion NVARCHAR(255) NULL,
+        pais_origen NVARCHAR(80) NULL,
+        telefono NVARCHAR(30) NULL,
+        correo NVARCHAR(120) NOT NULL UNIQUE,
+        rol NVARCHAR(20) NOT NULL CHECK (rol IN ('Admin','Trader','Analista')),
+        contrasena_hash VARCHAR(255) NOT NULL,
+        CONSTRAINT FK_Usuario_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id),
+        CONSTRAINT FK_Usuario_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
       );
     `);
 
     await queryDB(`
-      CREATE TABLE Posicion (
-        usuario_id      INT NOT NULL,
-        empresa_id      INT NOT NULL,
-        cantidad        INT NOT NULL CHECK (cantidad >= 0),
-        costo_promedio  DECIMAL(19,6) NOT NULL CHECK (costo_promedio >= 0),
-        PRIMARY KEY (usuario_id, empresa_id),
-        CONSTRAINT FK_Posicion_Usuario FOREIGN KEY (usuario_id) REFERENCES Usuario(usuario_id),
-        CONSTRAINT FK_Posicion_Empresa FOREIGN KEY (empresa_id) REFERENCES Empresa(empresa_id)
+      CREATE TABLE Mercado_Habilitado (
+        id_mercado UNIQUEIDENTIFIER NOT NULL,
+        id_usuario UNIQUEIDENTIFIER NOT NULL,
+        PRIMARY KEY (id_mercado, id_usuario),
+        CONSTRAINT FK_MH_Mercado FOREIGN KEY (id_mercado) REFERENCES Mercado(id),
+        CONSTRAINT FK_MH_Usuario FOREIGN KEY (id_usuario) REFERENCES Usuario(id)
       );
     `);
 
     await queryDB(`
-      CREATE TABLE Operacion (
-        operacion_id INT IDENTITY(1,1) PRIMARY KEY,
-        usuario_id   INT NOT NULL,
-        empresa_id   INT NOT NULL,
-        ts_utc       DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
-        lado         CHAR(1) NOT NULL CHECK (lado IN ('B','S')),
-        cantidad     INT NOT NULL CHECK (cantidad > 0),
-        precio       DECIMAL(19,4) NOT NULL CHECK (precio > 0),
-        nota         NVARCHAR(200),
-        CONSTRAINT FK_Operacion_Usuario FOREIGN KEY (usuario_id) REFERENCES Usuario(usuario_id),
-        CONSTRAINT FK_Operacion_Empresa FOREIGN KEY (empresa_id) REFERENCES Empresa(empresa_id)
+      CREATE TABLE Inventario (
+        id_empresa UNIQUEIDENTIFIER PRIMARY KEY,
+        acciones_totales INT NOT NULL CHECK (acciones_totales >= 0),
+        acciones_disponibles INT NOT NULL CHECK (acciones_disponibles >= 0),
+        precio DECIMAL(19,4) NOT NULL CHECK (precio > 0),
+        capitalizacion AS (acciones_disponibles * precio),
+        CONSTRAINT FK_Inventario_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
       );
     `);
 
     await queryDB(`
-      CREATE TABLE Usuario_Mercado (
-        usuario_id     INT NOT NULL,
-        mercado_id     INT NOT NULL,
-        habilitado_por INT NOT NULL,
-        habilitado_en  DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
-        PRIMARY KEY (usuario_id, mercado_id),
-        CONSTRAINT FK_UM_Usuario FOREIGN KEY (usuario_id) REFERENCES Usuario(usuario_id),
-        CONSTRAINT FK_UM_Mercado FOREIGN KEY (mercado_id) REFERENCES Mercado(mercado_id),
-        CONSTRAINT FK_UM_Admin FOREIGN KEY (habilitado_por) REFERENCES Usuario(usuario_id)
+      CREATE TABLE Transaccion (
+        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        alias NVARCHAR(40) NOT NULL,
+        id_portafolio UNIQUEIDENTIFIER NOT NULL,
+        id_billetera UNIQUEIDENTIFIER NOT NULL,
+        id_empresa UNIQUEIDENTIFIER NOT NULL,
+        tipo NVARCHAR(10) NOT NULL CHECK (tipo IN ('Compra','Venta')),
+        precio DECIMAL(19,4) NOT NULL CHECK (precio > 0),
+        cantidad INT NOT NULL CHECK (cantidad > 0),
+        fecha DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+        CONSTRAINT FK_Transaccion_Usuario FOREIGN KEY (alias) REFERENCES Usuario(alias),
+        CONSTRAINT FK_Transaccion_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id),
+        CONSTRAINT FK_Transaccion_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id),
+        CONSTRAINT FK_Transaccion_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
       );
     `);
 
     await queryDB(`
-      CREATE TABLE Sector (
-        sector_id INT IDENTITY(1,1) PRIMARY KEY,
-        nombre    VARCHAR(60) NOT NULL UNIQUE
+      CREATE TABLE Inventario_Historial (
+        fecha DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+        id_empresa UNIQUEIDENTIFIER NOT NULL,
+        acciones_totales INT NOT NULL,
+        acciones_disponibles INT NOT NULL,
+        precio DECIMAL(19,4) NOT NULL,
+        capitalizacion AS (acciones_disponibles * precio),
+        PRIMARY KEY (fecha, id_empresa),
+        CONSTRAINT FK_IH_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
       );
     `);
 
     await queryDB(`
-      CREATE TABLE Empresa_Sector (
-        empresa_id INT NOT NULL,
-        sector_id  INT NOT NULL,
-        PRIMARY KEY (empresa_id, sector_id),
-        CONSTRAINT FK_ES_Empresa FOREIGN KEY (empresa_id) REFERENCES Empresa(empresa_id),
-        CONSTRAINT FK_ES_Sector FOREIGN KEY (sector_id) REFERENCES Sector(sector_id)
+      CREATE TABLE Billetera_Historial (
+        fecha DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+        id_billetera UNIQUEIDENTIFIER NOT NULL,
+        categoria NVARCHAR(20) NOT NULL,
+        fondos DECIMAL(19,4) NOT NULL,
+        limite_diario DECIMAL(19,4) NOT NULL,
+        consumo DECIMAL(19,4) NOT NULL,
+        bloqueo_hasta DATETIME2(3) NULL,
+        recarga_monto DECIMAL(19,4) NULL,
+        PRIMARY KEY (fecha, id_billetera),
+        CONSTRAINT FK_BH_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id)
       );
     `);
 
     await queryDB(`
-      CREATE TABLE App_Setting (
-        clave VARCHAR(64) PRIMARY KEY,
-        valor NVARCHAR(200) NOT NULL
+      CREATE TABLE Portafolio_Historial (
+        fecha DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+        id_portafolio UNIQUEIDENTIFIER NOT NULL,
+        id_empresa UNIQUEIDENTIFIER NOT NULL,
+        acciones INT NOT NULL CHECK (acciones >= 0),
+        PRIMARY KEY (fecha, id_portafolio, id_empresa),
+        CONSTRAINT FK_PH_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id),
+        CONSTRAINT FK_PH_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
       );
     `);
 
     await queryDB(`
-      CREATE TABLE Acciones (
-        id_usuario INT NOT NULL,
-        id_empresa INT NOT NULL,
-        acciones   INT NOT NULL CHECK (acciones >= 0),
-        valor      DECIMAL(19,4) NOT NULL DEFAULT 0.0000,
-        PRIMARY KEY (id_usuario, id_empresa),
-        CONSTRAINT FK_Acciones_Usuario FOREIGN KEY (id_usuario) REFERENCES Usuario(usuario_id),
-        CONSTRAINT FK_Acciones_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(empresa_id)
+      CREATE TABLE Empresa_Favorita (
+        id_empresa UNIQUEIDENTIFIER NOT NULL,
+        id_usuario UNIQUEIDENTIFIER NOT NULL,
+        PRIMARY KEY (id_empresa, id_usuario),
+        CONSTRAINT FK_EF_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id),
+        CONSTRAINT FK_EF_Usuario FOREIGN KEY (id_usuario) REFERENCES Usuario(id)
       );
     `);
 
-    console.log('Tablas creadas correctamente');
+    console.log('Tablas creadas correctamente (modelo schema.sql)');
   } catch (err) {
     console.error('Error creando tablas:', err);
     throw err;

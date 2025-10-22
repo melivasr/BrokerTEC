@@ -93,3 +93,20 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Ejecutar y probar en un dispositivo móvil (desarrollo)
+
+1. Asegúrate de que tu PC y tu móvil estén en la misma red Wi‑Fi.
+2. Crea un archivo `.env` a partir de `.env.example` y ajusta la IP de tu PC (ej. `REACT_APP_API_URL=http://192.168.18.114:4000`).
+3. Arranca el backend (en la carpeta `backend`):
+	```powershell
+	node server.js
+	```
+4. En la carpeta del frontend (`broker-tec`) arranca el dev server exportando HOST=0.0.0.0 para exponer la interfaz de red:
+	```powershell
+	$env:HOST='0.0.0.0'
+	npm start
+	```
+5. En tu móvil abre la URL que muestra CRA, p.ej. `http://192.168.18.114:3000`.
+
+Nota: si el móvil no puede conectar, asegúrate de abrir los puertos 3000 y 4000 en el firewall de Windows o usa una herramienta como `localtunnel`/`ngrok`.

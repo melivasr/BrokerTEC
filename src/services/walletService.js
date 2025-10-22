@@ -1,7 +1,8 @@
 import axios from "axios";
 import { authHeader } from "./authService";
 
-const API_URL = "http://localhost:4000/api/wallet"; // Ajusta la ruta según tu backend
+const BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000';
+const API_URL = `${BASE}/api/wallet`; // Ajusta la ruta según tu backend
 
 // Obtener info del wallet
 export async function getWallet() {
@@ -11,20 +12,22 @@ export async function getWallet() {
     });
     return response.data;
   } catch (error) {
-    throw error.response?.data?.message || "Error al obtener el wallet";
+    // Lanzar el objeto error para que el frontend pueda leer response.data (message/error)
+    throw error;
   }
 }
 
 // Recargar wallet
-export async function recargarWallet(usuario_id, monto) {
+export async function recargarWallet(id, monto) {
   try {
     const response = await axios.post(
       `${API_URL}/recargar`,
-      { usuario_id, monto },
+      { id, monto },
       { headers: authHeader() }
     );
     return response.data;
   } catch (error) {
-    throw error.response?.data?.message || "Error al recargar el wallet";
+    // Lanzar el error completo para que la UI muestre el detalle proporcionado por el backend
+    throw error;
   }
 }
