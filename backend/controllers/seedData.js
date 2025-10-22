@@ -1,10 +1,5 @@
-<<<<<<< HEAD
-import { queryDB } from '../config/db.js';
-import bcrypt from 'bcryptjs';
-=======
 import bcrypt from "bcryptjs";
 import { queryDB } from "../config/db.js";
->>>>>>> develop
 
 export default async function seedData() {
   try {
