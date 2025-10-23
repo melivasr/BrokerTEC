@@ -1,0 +1,22 @@
+version: '3.9'
+services:
+    mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        environment:
+            SA_PASSWORD: "Str0ng!Passw0rd"
+            ACCEPT_EULA: "Y"
+        ports:
+            - "1433:1433"
+
+    db-init:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        volumes:
+            - ./db:/db:Z
+        depends_on:
+            - mssql
+        entrypoint: >
+            sh -c "
+            until /opt/mssql-tools18/bin/sqlcmd -S mssql,1433 -U SA -P 'Str0ng!Passw0rd' -C -Q 'SELECT 1;'; do sleep 2; done;
+            /opt/mssql-tools18/bin/sqlcmd -S mssql,1433 -U SA -P 'Str0ng!Passw0rd' -C -Q 'DROP DATABASE IF EXISTS BrokerTEC; CREATE DATABASE BrokerTEC;';
+            /opt/mssql-tools18/bin/sqlcmd -S mssql,1433 -U SA -P 'Str0ng!Passw0rd' -C -d BrokerTEC -i /db/schema.sql;
+            /opt/mssql-tools18/bin/sqlcmd -S mssql,1433 -U SA -P 'Str0ng!Passw0rd' -C -d BrokerTEC -i /db/seed.sql"

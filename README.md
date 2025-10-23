@@ -1,3 +1,28 @@
+# BrokerTEC
+
+BrokerTEC es una aplicación web que permite a usuarios comercian en la bolsa de valores. Más información en [el enunciado](Proyectos_CE_3101_S2_2025_Proyecto_1.pdf)
+
+## Backend
+
+Para correr el backend, se necesita `nodejs`. Para la base de datos, se necesita `docker` (o `podman`) y `docker-compose` (o `podman-compose`) si se corre en linux.
+
+Configure `docker` o `podman`. Luego de clonar e ingresar al repositorio, inicialize la base de datos:
+
+```
+docker compose down -v && docker compose up --build
+```
+
+En windows, con SQL Server Studio, crear base de datos `BrokerTec` y usar [schema.sql](db/schema.sql) y [seed.sql](db/seed.sql) para generar datos semilla.
+
+Luego inicie el servidor con `nodejs`:
+
+```
+cd backend
+node server.js
+```
+
+# Frontend
+
 # Getting Started with Create React App
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
@@ -68,3 +93,20 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Ejecutar y probar en un dispositivo móvil (desarrollo)
+
+1. Asegúrate de que tu PC y tu móvil estén en la misma red Wi‑Fi.
+2. Crea un archivo `.env` a partir de `.env.example` y ajusta la IP de tu PC (ej. `REACT_APP_API_URL=http://192.168.18.114:4000`).
+3. Arranca el backend (en la carpeta `backend`):
+	```powershell
+	node server.js
+	```
+4. En la carpeta del frontend (`broker-tec`) arranca el dev server exportando HOST=0.0.0.0 para exponer la interfaz de red:
+	```powershell
+	$env:HOST='0.0.0.0'
+	npm start
+	```
+5. En tu móvil abre la URL que muestra CRA, p.ej. `http://192.168.18.114:3000`.
+
+Nota: si el móvil no puede conectar, asegúrate de abrir los puertos 3000 y 4000 en el firewall de Windows o usa una herramienta como `localtunnel`/`ngrok`.
