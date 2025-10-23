@@ -19,7 +19,7 @@ const compressConsecutiveEquals = (rows) => {
   return out;
 };
 
-// Estilos compartidos (dentro del componente, sin archivo externo)
+// Estilos compartidos 
 const tableCell = { padding: 12, border: '1px solid #ddd' };
 const modalInput = (isMobile) => ({ 
   width: '100%', 
