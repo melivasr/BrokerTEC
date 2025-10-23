@@ -88,27 +88,34 @@ export async function deleteMercado(req, res) {
 // Obtener empresas CON inventario para admin
 export async function getEmpresasAdmin(req, res) {
     try {
-        const empresas = await queryDB(`
-            SELECT 
-                e.id,
-                e.nombre,
-                e.ticker,
-                e.id_mercado,
-                m.nombre AS mercado,
-                i.precio AS precio_actual,
-                i.acciones_totales,
-                i.acciones_disponibles,
-                i.capitalizacion
-            FROM Empresa e
-            INNER JOIN Mercado m ON e.id_mercado = m.id
-            LEFT JOIN Inventario i ON e.id = i.id_empresa
-            ORDER BY m.nombre, e.nombre
-        `);
+    const empresas = await queryDB(`
+        SELECT 
+        e.id,
+        e.nombre,
+        e.ticker,
+        e.id_mercado,
+        m.nombre AS mercado,
+        i.precio AS precio_actual,
+        i.acciones_totales,
+        i.acciones_disponibles,
+        i.capitalizacion,
+        ult.fecha AS fecha_actualizacion
+        FROM Empresa e
+        INNER JOIN Mercado m ON e.id_mercado = m.id
+        LEFT JOIN Inventario i ON e.id = i.id_empresa
+        OUTER APPLY (
+        SELECT TOP 1 ih.fecha
+        FROM Inventario_Historial ih
+        WHERE ih.id_empresa = e.id
+        ORDER BY ih.fecha DESC
+        ) ult
+        ORDER BY m.nombre, e.nombre
+    `);
 
-        res.json(empresas);
+    res.json(empresas);
     } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'Error al obtener empresas' });
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Error al obtener empresas' });
     }
 }
 
