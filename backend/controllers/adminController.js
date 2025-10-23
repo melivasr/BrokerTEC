@@ -58,31 +58,41 @@ export async function updateMercado(req, res) {
 }
 
 export async function deleteMercado(req, res) {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (!guidRegex.test(id)) {
-        return res.status(400).json({ message: 'ID de mercado inválido' });
+  const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (!guidRegex.test(id)) {
+    return res.status(400).json({ message: 'ID de mercado inválido' });
+  }
+
+  try {
+    // Bloquea si tiene empresas
+    const empresas = await queryDB(
+      `SELECT COUNT(*) AS total FROM Empresa WHERE id_mercado = @id_mercado`,
+      { id_mercado: id }
+    );
+    if (empresas[0].total > 0) {
+      return res.status(400).json({ message: 'No se puede eliminar un mercado con empresas asociadas' });
     }
 
-    try {
-        const empresas = await queryDB(
-            `SELECT COUNT(*) AS total FROM Empresa WHERE id_mercado = @id_mercado`,
-            { id_mercado: id }
-        );
-        if (empresas[0].total > 0) {
-            return res.status(400).json({ message: 'No se puede eliminar un mercado con empresas asociadas' });
-        }
+    // Limpia Mercado_Habilitado (si existen enlaces)
+    await queryDB(
+      `DELETE FROM Mercado_Habilitado WHERE id_mercado = @id_mercado`,
+      { id_mercado: id }
+    );
 
-        await queryDB(
-            `DELETE FROM Mercado WHERE id = @id_mercado`,
-            { id_mercado: id }
-        );
-        res.json({ message: 'Mercado eliminado exitosamente' });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'Error al eliminar mercado' });
-    }
+    // Borra el mercado
+    const result = await queryDB(
+      `DELETE FROM Mercado WHERE id = @id_mercado`,
+      { id_mercado: id }
+    );
+
+    res.json({ message: 'Mercado eliminado exitosamente' });
+  } catch (error) {
+    console.error('Error:', error);
+    // Si vuelve a fallar con 547, es otra FK colgando
+    res.status(500).json({ message: 'Error al eliminar mercado' });
+  }
 }
 
 // Obtener empresas CON inventario para admin
