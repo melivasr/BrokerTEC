@@ -37,9 +37,7 @@
   }
 }
 
-/* 🌞=============================
-   🔆 MODO CLARO (por defecto)
-   =============================*/
+/*MODO CLARO */
 :root {
   --bg-color: #f5f5f5;
   --text-color: #222;
@@ -49,9 +47,7 @@
   --button-text: #222;
 }
 
-/* 🌙=============================
-   🌑 MODO OSCURO
-   =============================*/
+/*MODO OSCURO*/
 body.dark-mode {
   --bg-color: #121212;
   --text-color: #f5f5f5;

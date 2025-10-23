@@ -59,7 +59,7 @@ export default function HomeTrader() {
       setLoading(false);
     }
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [user]);
 
   if (!user) return <div>Cargando usuario...</div>;

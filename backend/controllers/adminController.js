@@ -88,74 +88,87 @@ export async function deleteMercado(req, res) {
 // Obtener empresas CON inventario para admin
 export async function getEmpresasAdmin(req, res) {
     try {
-        const empresas = await queryDB(`
-            SELECT 
-                e.id,
-                e.nombre,
-                e.ticker,
-                e.id_mercado,
-                m.nombre AS mercado,
-                i.precio AS precio_actual,
-                i.acciones_totales,
-                i.acciones_disponibles,
-                i.capitalizacion
-            FROM Empresa e
-            INNER JOIN Mercado m ON e.id_mercado = m.id
-            LEFT JOIN Inventario i ON e.id = i.id_empresa
-            ORDER BY m.nombre, e.nombre
-        `);
+    const empresas = await queryDB(`
+        SELECT 
+        e.id,
+        e.nombre,
+        e.ticker,
+        e.id_mercado,
+        m.nombre AS mercado,
+        i.precio AS precio_actual,
+        i.acciones_totales,
+        i.acciones_disponibles,
+        i.capitalizacion,
+        ult.fecha AS fecha_actualizacion
+        FROM Empresa e
+        INNER JOIN Mercado m ON e.id_mercado = m.id
+        LEFT JOIN Inventario i ON e.id = i.id_empresa
+        OUTER APPLY (
+        SELECT TOP 1 ih.fecha
+        FROM Inventario_Historial ih
+        WHERE ih.id_empresa = e.id
+        ORDER BY ih.fecha DESC
+        ) ult
+        ORDER BY m.nombre, e.nombre
+    `);
 
-        res.json(empresas);
+    res.json(empresas);
     } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'Error al obtener empresas' });
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Error al obtener empresas' });
     }
 }
 
 // Crear empresa con inventario
 export async function createEmpresaAdmin(req, res) {
-    const { nombre, ticker, id_mercado, precio, acciones_totales } = req.body;
+  const { nombre, ticker, id_mercado, precio, acciones_totales } = req.body;
 
-    if (!nombre || !ticker || !id_mercado) {
-        return res.status(400).json({ message: 'Faltan datos requeridos' });
+  if (!nombre || !ticker || !id_mercado) {
+    return res.status(400).json({ message: 'Faltan datos requeridos' });
+  }
+  if (precio && acciones_totales) {
+    if (precio <= 0 || acciones_totales <= 0) {
+      return res.status(400).json({ message: 'datos de capitalización incompletos' });
     }
+  }
+
+  try {
+    const resultado = await queryDB(
+      `INSERT INTO Empresa (nombre, ticker, id_mercado) 
+       OUTPUT INSERTED.id
+       VALUES (@nombre, @ticker, @id_mercado)`,
+      { nombre, ticker: ticker.toUpperCase(), id_mercado }
+    );
+
+    const nuevaEmpresaId = resultado[0].id;
 
     if (precio && acciones_totales) {
-        if (precio <= 0 || acciones_totales <= 0) {
-            return res.status(400).json({ message: 'datos de capitalización incompletos' });
+      // Inventario + capitalización
+      await queryDB(
+        `INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio, capitalizacion)
+         VALUES (@id_empresa, @acciones_totales, @acciones_totales, @precio, @cap)`,
+        {
+          id_empresa: nuevaEmpresaId,
+          acciones_totales,
+          precio,
+          cap: precio * acciones_totales
         }
+      );
+
+      // Primer registro histórico (timestamp de servidor en UTC)
+      await queryDB(
+        `INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
+         SELECT SYSUTCDATETIME(), id_empresa, acciones_totales, acciones_disponibles, precio
+         FROM Inventario WHERE id_empresa = @id_empresa`,
+        { id_empresa: nuevaEmpresaId }
+      );
     }
 
-    try {
-        const resultado = await queryDB(
-            `INSERT INTO Empresa (nombre, ticker, id_mercado) 
-             OUTPUT INSERTED.id
-             VALUES (@nombre, @ticker, @id_mercado)`,
-            { nombre: nombre, ticker: ticker.toUpperCase(), id_mercado: id_mercado }
-        );
-
-        const nuevaEmpresaId = resultado[0].id;
-
-        if (precio && acciones_totales) {
-            await queryDB(
-                `INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
-                 VALUES (@id_empresa, @acciones_totales, @acciones_totales, @precio)`,
-                {
-                    id_empresa: nuevaEmpresaId,
-                    acciones_totales: acciones_totales,
-                    precio: precio
-                }
-            );
-        }
-
-        res.status(201).json({ 
-            message: 'Empresa creada exitosamente',
-            id: nuevaEmpresaId
-        });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'Error al crear empresa' });
-    }
+    res.status(201).json({ message: 'Empresa creada exitosamente', id: nuevaEmpresaId });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Error al crear empresa' });
+  }
 }
 
 // Actualizar empresa
@@ -191,256 +204,242 @@ export async function updateEmpresa(req, res) {
         res.status(500).json({ message: 'Error al actualizar empresa' });
     }
 }
-
 // Delistar empresa con liquidación
 export async function delistarEmpresa(req, res) {
-    const { id } = req.params;
-    const { justificacion, precio_liquidacion } = req.body;
+  const { id } = req.params;
+  const { justificacion, precio_liquidacion } = req.body;
 
-    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (!guidRegex.test(id)) {
-        return res.status(400).json({ message: 'ID de empresa inválido' });
+  const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (!guidRegex.test(id)) {
+    return res.status(400).json({ message: 'ID de empresa inválido' });
+  }
+
+  if (!justificacion) {
+    return res.status(400).json({ message: 'La justificación es requerida' });
+  }
+
+  try {
+    const empresa = await queryDB(
+      `SELECT e.nombre, i.precio 
+       FROM Empresa e
+       LEFT JOIN Inventario i ON e.id = i.id_empresa
+       WHERE e.id = @id_empresa`,
+      { id_empresa: id }
+    );
+
+    if (empresa.length === 0) {
+      return res.status(404).json({ message: 'Empresa no encontrada' });
     }
 
-    if (!justificacion) {
-        return res.status(400).json({ message: 'La justificación es requerida' });
+    const precioLiquidacion = precio_liquidacion || empresa[0].precio;
+
+    if (!precioLiquidacion || precioLiquidacion <= 0) {
+      return res.status(400).json({ message: 'Precio de liquidación inválido' });
     }
 
-    try {
-        const empresa = await queryDB(
-            `SELECT e.nombre, i.precio 
-             FROM Empresa e
-             LEFT JOIN Inventario i ON e.id = i.id_empresa
-             WHERE e.id = @id_empresa`,
-            { id_empresa: id }
+    const posiciones = await queryDB(
+      `SELECT p.id, p.acciones, u.id AS id_usuario, u.alias, u.id_billetera
+       FROM Portafolio p
+       INNER JOIN Usuario u ON p.id = u.id_portafolio
+       WHERE p.id_empresa = @id_empresa AND p.acciones > 0`,
+      { id_empresa: id }
+    );
+
+    if (posiciones.length > 0) {
+      for (let i = 0; i < posiciones.length; i++) {
+        const pos = posiciones[i];
+        const montoLiquidacion = pos.acciones * precioLiquidacion;
+
+        await queryDB(
+          `UPDATE Billetera 
+           SET fondos = fondos + @monto
+           WHERE id = @id_billetera`,
+          { monto: montoLiquidacion, id_billetera: pos.id_billetera }
         );
 
-        if (empresa.length === 0) {
-            return res.status(404).json({ message: 'Empresa no encontrada' });
-        }
-
-        const precioLiquidacion = precio_liquidacion || empresa[0].precio;
-
-        if (!precioLiquidacion || precioLiquidacion <= 0) {
-            return res.status(400).json({ message: 'Precio de liquidación inválido' });
-        }
-
-        const posiciones = await queryDB(
-            `SELECT p.id, p.acciones, u.id AS id_usuario, u.alias, u.id_billetera
-             FROM Portafolio p
-             INNER JOIN Usuario u ON p.id = u.id_portafolio
-             WHERE p.id_empresa = @id_empresa AND p.acciones > 0`,
-            { id_empresa: id }
+        await queryDB(
+          `INSERT INTO Transaccion (alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad, fecha)
+           VALUES (@alias, @id_portafolio, @id_billetera, @id_empresa, 'Venta', @precio, @cantidad, GETDATE())`,
+          {
+            alias: pos.alias,
+            id_portafolio: pos.id,
+            id_billetera: pos.id_billetera,
+            id_empresa: id,
+            precio: precioLiquidacion,
+            cantidad: pos.acciones
+          }
         );
 
-        if (posiciones.length > 0) {
-            for (let i = 0; i < posiciones.length; i++) {
-                const pos = posiciones[i];
-                const montoLiquidacion = pos.acciones * precioLiquidacion;
+        await queryDB(
+          `UPDATE Portafolio SET acciones = 0 WHERE id = @id_portafolio`,
+          { id_portafolio: pos.id }
+        );
+      }
 
-                await queryDB(
-                    `UPDATE Billetera 
-                     SET fondos = fondos + @monto
-                     WHERE id = @id_billetera`,
-                    { monto: montoLiquidacion, id_billetera: pos.id_billetera }
-                );
+      const mensaje = `empresa con posiciones activas (se liquidarán). ${posiciones.length} posición(es) liquidada(s) al precio de $${precioLiquidacion}`;
 
-                await queryDB(
-                    `INSERT INTO Transaccion (alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad, fecha)
-                     VALUES (@alias, @id_portafolio, @id_billetera, @id_empresa, 'Venta', @precio, @cantidad, GETDATE())`,
-                    {
-                        alias: pos.alias,
-                        id_portafolio: pos.id,
-                        id_billetera: pos.id_billetera,
-                        id_empresa: id,
-                        precio: precioLiquidacion,
-                        cantidad: pos.acciones
-                    }
-                );
+      await queryDB(`DELETE FROM Inventario_Historial WHERE id_empresa = @id_empresa`, { id_empresa: id });
+      await queryDB(`DELETE FROM Inventario WHERE id_empresa = @id_empresa`, { id_empresa: id });
+      await queryDB(`DELETE FROM Empresa WHERE id = @id_empresa`, { id_empresa: id });
 
-                await queryDB(
-                    `UPDATE Portafolio SET acciones = 0 WHERE id = @id_portafolio`,
-                    { id_portafolio: pos.id }
-                );
-            }
+      res.json({ 
+        message: mensaje,
+        posiciones_liquidadas: posiciones.length,
+        precio_liquidacion: precioLiquidacion,
+        justificacion: justificacion
+      });
+    } else {
+      await queryDB(`DELETE FROM Inventario_Historial WHERE id_empresa = @id_empresa`, { id_empresa: id });
+      await queryDB(`DELETE FROM Inventario WHERE id_empresa = @id_empresa`, { id_empresa: id });
+      await queryDB(`DELETE FROM Empresa WHERE id = @id_empresa`, { id_empresa: id });
 
-            const mensaje = `empresa con posiciones activas (se liquidarán). ${posiciones.length} posición(es) liquidada(s) al precio de $${precioLiquidacion}`;
-            
-            await queryDB(`DELETE FROM Inventario WHERE id_empresa = @id_empresa`, { id_empresa: id });
-            await queryDB(`DELETE FROM Empresa WHERE id = @id_empresa`, { id_empresa: id });
-
-            res.json({ 
-                message: mensaje,
-                posiciones_liquidadas: posiciones.length,
-                precio_liquidacion: precioLiquidacion,
-                justificacion: justificacion
-            });
-        } else {
-            await queryDB(`DELETE FROM Inventario WHERE id_empresa = @id_empresa`, { id_empresa: id });
-            await queryDB(`DELETE FROM Empresa WHERE id = @id_empresa`, { id_empresa: id });
-
-            res.json({ 
-                message: 'Empresa deslistada exitosamente',
-                posiciones_liquidadas: 0,
-                justificacion: justificacion
-            });
-        }
-
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'Error al delistar empresa' });
+      res.json({ 
+        message: 'Empresa deslistada exitosamente',
+        posiciones_liquidadas: 0,
+        justificacion: justificacion
+      });
     }
+
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Error al delistar empresa' });
+  }
 }
+
 
 // PRECIOS & CARGA
 // Obtener historial de precios de una empresa
 export async function getHistorialPrecio(req, res) {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (!guidRegex.test(id)) {
-        return res.status(400).json({ message: 'ID de empresa inválido' });
-    }
+  const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (!guidRegex.test(id)) {
+    return res.status(400).json({ message: 'ID de empresa inválido' });
+  }
 
-    try {
-        const historial = await queryDB(`
-            SELECT fecha, precio
-            FROM Inventario_Historial
-            WHERE id_empresa = @id_empresa
-            ORDER BY fecha ASC
-        `, { id_empresa: id });
+  try {
+    const historial = await queryDB(`
+      SELECT fecha, precio
+      FROM Inventario_Historial
+      WHERE id_empresa = @id_empresa
+      ORDER BY fecha ASC
+    `, { id_empresa: id });
 
-        // Agregar precio actual
-        const precioActual = await queryDB(
-            `SELECT precio FROM Inventario WHERE id_empresa = @id_empresa`,
-            { id_empresa: id }
-        );
-
-        if (precioActual.length > 0) {
-            historial.push({
-                fecha: new Date(),
-                precio: precioActual[0].precio
-            });
-        }
-
-        res.json(historial);
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'Error al obtener historial de precios' });
-    }
+    res.json(historial);
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Error al obtener historial de precios' });
+  }
 }
 
 // Cargar precio manual
 export async function cargarPrecioManual(req, res) {
-    const { id } = req.params;
-    const { precio, fecha } = req.body;
+  const { id } = req.params;
+  const { precio, fecha } = req.body;
 
-    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (!guidRegex.test(id)) {
-        return res.status(400).json({ message: 'ID de empresa inválido' });
-    }
+  const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (!guidRegex.test(id)) return res.status(400).json({ message: 'ID de empresa inválido' });
 
-    // Validaciones
-    if (!precio || parseFloat(precio) <= 0) {
-        return res.status(400).json({ message: 'precio inválido' });
-    }
+  if (!precio || parseFloat(precio) <= 0) return res.status(400).json({ message: 'precio inválido' });
+  if (!fecha) return res.status(400).json({ message: 'formato de fecha inválido' });
 
-    if (!fecha) {
-        return res.status(400).json({ message: 'formato de fecha inválido' });
-    }
+  const fechaSeleccionada = new Date(fecha);
+  if (fechaSeleccionada > new Date()) return res.status(400).json({ message: 'La fecha no puede ser futura' });
 
-    // Validar que la fecha no sea futura
-    const fechaSeleccionada = new Date(fecha);
-    const ahora = new Date();
-    if (fechaSeleccionada > ahora) {
-        return res.status(400).json({ message: 'La fecha no puede ser futura' });
-    }
+  try {
+    const precioNum = parseFloat(precio);
 
-    try {
-        const precioNum = parseFloat(precio);
+    // Actualiza precio + capitalización
+    await queryDB(
+      `UPDATE Inventario 
+       SET precio = @precio, capitalizacion = @precio * acciones_totales
+       WHERE id_empresa = @id_empresa`,
+      { precio: precioNum, id_empresa: id }
+    );
 
-        // Actualizar precio actual en Inventario
-        await queryDB(
-            `UPDATE Inventario SET precio = @precio WHERE id_empresa = @id_empresa`,
-            { precio: precioNum, id_empresa: id }
-        );
+    // Historial con la fecha provista
+    await queryDB(
+      `INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
+       SELECT @fecha, id_empresa, acciones_totales, acciones_disponibles, @precio
+       FROM Inventario WHERE id_empresa = @id_empresa`,
+      { fecha: fechaSeleccionada, precio: precioNum, id_empresa: id }
+    );
 
-        // Registrar en historial
-        await queryDB(
-            `INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
-             SELECT @fecha, id_empresa, acciones_totales, acciones_disponibles, @precio
-             FROM Inventario WHERE id_empresa = @id_empresa`,
-            { fecha: fechaSeleccionada, precio: precioNum, id_empresa: id }
-        );
-
-        res.json({ 
-            message: 'Precio cargado exitosamente',
-            precio: precioNum,
-            fecha: fechaSeleccionada
-        });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'Error al cargar precio' });
-    }
+    res.json({ message: 'Precio cargado exitosamente', precio: precioNum, fecha: fechaSeleccionada });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Error al cargar precio' });
+  }
 }
 
 // Carga batch de precios (API)
 export async function cargarPreciosBatch(req, res) {
-    const { precios } = req.body; // Array de { id_empresa, precio }
+  const { precios } = req.body; // [{ id_empresa, precio, fecha? }]
 
-    if (!precios || !Array.isArray(precios) || precios.length === 0) {
-        return res.status(400).json({ message: 'Datos inválidos' });
-    }
+  if (!precios || !Array.isArray(precios) || precios.length === 0) {
+    return res.status(400).json({ message: 'Datos inválidos' });
+  }
 
-    try {
-        let exitosos = 0;
-        let fallidos = 0;
-        const errores = [];
+  try {
+    let exitosos = 0, fallidos = 0;
+    const errores = [];
 
-        for (const item of precios) {
-            const { id_empresa, precio } = item;
+    for (const item of precios) {
+      const { id_empresa, precio, fecha } = item || {};
 
-            // Validaciones
-            if (!id_empresa || !precio || parseFloat(precio) <= 0) {
-                fallidos++;
-                errores.push({ id_empresa, error: 'precio inválido' });
-                continue;
-            }
+      if (!id_empresa || !precio || parseFloat(precio) <= 0) {
+        fallidos++; errores.push({ id_empresa, error: 'precio inválido' }); continue;
+      }
 
-            try {
-                const precioNum = parseFloat(precio);
+      // Si viene fecha, validación simple (no futura)
+      let fechaValida = null;
+      if (fecha) {
+        const f = new Date(fecha);
+        if (isNaN(f.getTime()) || f > new Date()) {
+          fallidos++; errores.push({ id_empresa, error: 'formato de fecha inválido' }); continue;
+        }
+        fechaValida = f;
+      }
 
-                // Actualizar precio actual
-                await queryDB(
-                    `UPDATE Inventario SET precio = @precio WHERE id_empresa = @id_empresa`,
-                    { precio: precioNum, id_empresa: id_empresa }
-                );
+      try {
+        const precioNum = parseFloat(precio);
 
-                // Registrar en historial
-                await queryDB(
-                    `INSERT INTO Inventario_Historial (id_empresa, acciones_totales, acciones_disponibles, precio)
-                     SELECT id_empresa, acciones_totales, acciones_disponibles, @precio
-                     FROM Inventario WHERE id_empresa = @id_empresa`,
-                    { precio: precioNum, id_empresa: id_empresa }
-                );
+        // Actualiza precio + capitalización
+        await queryDB(
+          `UPDATE Inventario 
+           SET precio = @precio, capitalizacion = @precio * acciones_totales
+           WHERE id_empresa = @id_empresa`,
+          { precio: precioNum, id_empresa }
+        );
 
-                exitosos++;
-            } catch (err) {
-                fallidos++;
-                errores.push({ id_empresa, error: err.message });
-            }
+        // Historial
+        if (fechaValida) {
+          await queryDB(
+            `INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
+             SELECT @fecha, id_empresa, acciones_totales, acciones_disponibles, @precio
+             FROM Inventario WHERE id_empresa = @id_empresa`,
+            { fecha: fechaValida, precio: precioNum, id_empresa }
+          );
+        } else {
+          await queryDB(
+            `INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
+             SELECT SYSUTCDATETIME(), id_empresa, acciones_totales, acciones_disponibles, @precio
+             FROM Inventario WHERE id_empresa = @id_empresa`,
+            { precio: precioNum, id_empresa }
+          );
         }
 
-        res.json({
-            message: 'Carga batch completada',
-            exitosos: exitosos,
-            fallidos: fallidos,
-            errores: errores
-        });
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'auth fallida' });
+        exitosos++;
+      } catch (err) {
+        fallidos++; errores.push({ id_empresa, error: err.message });
+      }
     }
+
+    res.json({ message: 'Carga batch completada', exitosos, fallidos, errores });
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'auth fallida' });
+  }
 }
 
 // USUARIOS & CUENTAS
