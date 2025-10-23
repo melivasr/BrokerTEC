@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
-import { getCurrentUser, updateUser, deleteUser, changePassword } from "../../services/authService";
+import { getCurrentUser, updateUser, deleteUser, changePassword, logout } from "../../services/authService";
+import { useNavigate } from "react-router-dom";
 
 export default function Perfil() {
   const [user, setUser] = useState(null);
@@ -12,9 +13,14 @@ export default function Perfil() {
   const [passwords, setPasswords] = useState({ old: "", new: "" });
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState("");
+  const navigate = useNavigate();
 
   useEffect(() => {
     const u = getCurrentUser();
+    if  (!u) {
+      navigate("/login");
+      return;
+    }
     setUser(u);
     setForm({
       alias: u?.alias || "",
@@ -49,7 +55,7 @@ export default function Perfil() {
     try {
       await deleteUser(user.id);
       setSuccess("Cuenta eliminada. Redirigiendo...");
-      setTimeout(() => window.location.href = "/login", 2000);
+      setTimeout(() => navigate ("/login"), 2000);
     } catch (err) {
       setError(err?.message || "Error al eliminar cuenta.");
     }
@@ -72,6 +78,11 @@ export default function Perfil() {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  }
+
   return (
     <div style={{ display: "flex" }}>
       <Sidebar rol={user.rol} />
@@ -80,6 +91,7 @@ export default function Perfil() {
         <div style={{ background: 'var(--card-bg)', padding: 24, borderRadius: 8, boxShadow: "0 2px 8px #eee", maxWidth: 500 }}>
           {error && <div style={{ color: "red", marginBottom: 10 }}>{error}</div>}
           {success && <div style={{ color: "green", marginBottom: 10 }}>{success}</div>}
+          
           {!editMode ? (
             <>
               <h3>Datos personales</h3>
@@ -133,10 +145,16 @@ export default function Perfil() {
             <label>
               <input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} /> Mostrar contraseñas
             </label>
-            <button type="submit" style={{ marginTop: 12 }} className="btn-block">Cambiar contraseña</button>
+            <button type="submit" style={{ marginTop: 12, marginLeft: 8 }} className="btn-block">Cambiar contraseña</button>
             {pwError && <div style={{ color: "red", marginTop: 8 }}>{pwError}</div>}
             {pwSuccess && <div style={{ color: "green", marginTop: 8 }}>{pwSuccess}</div>}
           </form>
+          <button 
+            onClick={handleLogout} 
+            style={{ backgroundColor: "#ff4d4f", color: "#fff", padding: "8px 16px", borderRadius: "6px", border: "none", marginBottom: 16, marginTop: 24 }}
+          >
+            Cerrar sesión
+          </button>
         </div>
       </main>
     </div>

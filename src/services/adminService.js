@@ -110,3 +110,20 @@ export async function getTopAcciones() {
     const res = await axios.get('/api/admin/usuarios/top-acciones', { headers: authHeader() });
     return res.data;
 }
+
+export async function habilitarMercado(idUsuario, idMercado) {
+    const res = await axios.post(
+        `/api/admin/usuarios/${idUsuario}/mercados`,
+        { id_mercado: idMercado },
+        { headers: authHeader() }
+    );
+    return res.data;
+}
+
+export async function deshabilitarMercado(idUsuario, idMercado) {
+    const res = await axios.delete(
+        `/api/admin/usuarios/${idUsuario}/mercados/${idMercado}`,
+        { headers: authHeader() }
+    );
+    return res.data;
+}

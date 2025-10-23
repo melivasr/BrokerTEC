@@ -852,3 +852,56 @@ export async function updateUsuarioAdmin(req, res) {
         res.status(500).json({ message: 'Error al actualizar usuario' });
     }
 }
+
+export async function habilitarMercado(req, res) {
+    const { id } = req.params; // id del usuario
+    const { id_mercado } = req.body;
+
+    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!guidRegex.test(id) || !guidRegex.test(id_mercado)) {
+        return res.status(400).json({ message: 'IDs inválidos' });
+    }
+
+    try {
+        // Verificar si ya existe
+        const existe = await queryDB(
+            `SELECT * FROM Mercado_Habilitado WHERE id_usuario = @id_usuario AND id_mercado = @id_mercado`,
+            { id_usuario: id, id_mercado: id_mercado }
+        );
+
+        if (existe.length > 0) {
+            return res.status(400).json({ message: 'Mercado ya habilitado para este usuario' });
+        }
+
+        await queryDB(
+            `INSERT INTO Mercado_Habilitado (id_usuario, id_mercado) VALUES (@id_usuario, @id_mercado)`,
+            { id_usuario: id, id_mercado: id_mercado }
+        );
+
+        res.json({ message: 'Mercado habilitado exitosamente' });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al habilitar mercado' });
+    }
+}
+
+export async function deshabilitarMercado(req, res) {
+    const { id, idMercado } = req.params;
+
+    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!guidRegex.test(id) || !guidRegex.test(idMercado)) {
+        return res.status(400).json({ message: 'IDs inválidos' });
+    }
+
+    try {
+        await queryDB(
+            `DELETE FROM Mercado_Habilitado WHERE id_usuario = @id_usuario AND id_mercado = @id_mercado`,
+            { id_usuario: id, id_mercado: idMercado }
+        );
+
+        res.json({ message: 'Mercado deshabilitado exitosamente' });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ message: 'Error al deshabilitar mercado' });
+    }
+}
