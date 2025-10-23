@@ -26,16 +26,6 @@ function AppContent() {
   const isAuthPage = location.pathname === "/login" || location.pathname === "/register";
   return (
     <div className="App" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-      {isAuthPage && (
-        <>
-          <img src={logo} alt="Logo" style={{ width: 120, marginBottom: 16 }} />
-          <h1 style={{ marginBottom: 24 }}>BrokerTEC</h1>
-          <nav style={{ marginBottom: 24 }}>
-            <Link to="/login" style={{ marginRight: 16 }}>Iniciar sesión</Link>
-            <Link to="/register">Registrarse</Link>
-          </nav>
-        </>
-      )}
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
