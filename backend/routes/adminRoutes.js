@@ -3,7 +3,7 @@ const router = express.Router();
 import {getMercados, createMercado, updateMercado, deleteMercado, getEmpresasAdmin, createEmpresaAdmin,
     updateEmpresa, delistarEmpresa, getHistorialPrecio, cargarPrecioManual, cargarPreciosBatch,     getUsuarios,
     getUsuarioCuentas, deshabilitarUsuario, getTopWallet, getTopAcciones, createUsuario,
-    updateUsuarioAdmin} from '../controllers/adminController.js';
+    updateUsuarioAdmin, habilitarMercado, deshabilitarMercado} from '../controllers/adminController.js';
 import { verifyToken } from '../middlewares/authMiddleware.js';
 
 router.use(verifyToken);
@@ -29,4 +29,8 @@ router.post('/usuarios/:id/deshabilitar', deshabilitarUsuario);
 
 router.get('/usuarios/top-wallet', getTopWallet);
 router.get('/usuarios/top-acciones', getTopAcciones);
+
+router.post('/usuarios/:id/mercados', habilitarMercado);
+router.delete('/usuarios/:id/mercados/:idMercado', deshabilitarMercado);
+
 export default router;

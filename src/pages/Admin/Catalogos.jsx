@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {getMercados, createMercado, updateMercado, deleteMercado,
-  getEmpresasAdmin, createEmpresaAdmin, updateEmpresa, delistarEmpresa
+  getEmpresasAdmin, createEmpresaAdmin, updateEmpresa, delistarEmpresa, getHistorialPrecio
 } from '../../services/adminService';
 import ErrorMessage from '../../components/ErrorMessage';
 import Sidebar from '../../components/Sidebar';
@@ -29,6 +29,11 @@ const Catalogos = () => {
   const [justificacion, setJustificacion] = useState('');
   const [precioLiquidacion, setPrecioLiquidacion] = useState('');
 
+  // Estado para precios históricos
+  const [preciosHistoricos, setPreciosHistoricos] = useState({});
+  const [showPreciosModal, setShowPreciosModal] = useState(false);
+  const [selectedEmpresaPrecios, setSelectedEmpresaPrecios] = useState(null);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -41,9 +46,29 @@ const Catalogos = () => {
       ]);
       setMercados(mercadosData);
       setEmpresas(empresasData);
+      
+      // Cargar precios históricos para cada empresa
+      const historicos = {};
+      for (const empresa of empresasData) {
+        if (empresa.precio_actual) {
+          try {
+            const historial = await getHistorialPrecio(empresa.id);
+            // Tomar los últimos 5 precios (excluyendo el actual)
+            historicos[empresa.id] = historial.slice(-6, -1).reverse();
+          } catch (err) {
+            historicos[empresa.id] = [];
+          }
+        }
+      }
+      setPreciosHistoricos(historicos);
     } catch (err) {
       setError('Error cargando datos');
     }
+  };
+
+  const handleVerPrecios = async (empresa) => {
+    setSelectedEmpresaPrecios(empresa);
+    setShowPreciosModal(true);
   };
 
   // MERCADOS
@@ -84,7 +109,7 @@ const Catalogos = () => {
   };
 
   const handleDeleteMercado = async (mercado) => {
-    if (!window.confirm(`¿Está seguro de eliminar el mercado "${mercado.nombre}"?`)) {
+    if (!window.confirm(`¿Está seguro de eliminar el mercado "${mercado.nombre}"?\n\nNOTA: Solo se puede eliminar si no tiene empresas asociadas.`)) {
       return;
     }
 
@@ -96,10 +121,10 @@ const Catalogos = () => {
       setSuccess('Mercado eliminado exitosamente');
       fetchData();
     } catch (err) {
-      if (err.message.includes('empresas asociadas')) {
-        setError('No se puede eliminar un mercado con empresas asociadas');
+      if (err.response?.data?.message?.includes('empresas asociadas')) {
+        setError('No se puede eliminar un mercado con empresas asociadas. Primero debe delistar todas las empresas de este mercado.');
       } else {
-        setError(err.message || 'Error al eliminar mercado');
+        setError(err.response?.data?.message || 'Error al eliminar mercado');
       }
     }
   };
@@ -204,7 +229,7 @@ const Catalogos = () => {
           <h2>Catálogos - Mercados y Empresas</h2>
           
           {error && <ErrorMessage message={error} />}
-          {success && <div style={{ padding: 12, background: '#d4edda', color: '#155724', borderRadius: 4, marginBottom: 16 }}>{success}</div>}
+          {success && <div style={{ padding: 12, background:"var(--card-bg)" , color: '#155724', borderRadius: 4, marginBottom: 16 }}>{success}</div>}
 
           {/* MERCADOS */}
           <div style={{ marginBottom: 48 }}>
@@ -214,7 +239,7 @@ const Catalogos = () => {
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#f5f5f5' }}>
+                <tr style={{ background: "var(--card-bg)" }}>
                   <th style={{ padding: 12, textAlign: 'left', border: '1px solid #ddd' }}>Nombre</th>
                   <th style={{ padding: 12, textAlign: 'center', border: '1px solid #ddd' }}>Acciones</th>
                 </tr>
@@ -225,7 +250,12 @@ const Catalogos = () => {
                     <td style={{ padding: 12, border: '1px solid #ddd' }}>{mercado.nombre}</td>
                     <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'center' }}>
                       <button onClick={() => handleEditMercado(mercado)} style={{ marginRight: 8 }}>Editar</button>
-                      <button onClick={() => handleDeleteMercado(mercado)}>Eliminar</button>
+                      <button 
+                        onClick={() => handleDeleteMercado(mercado)}
+                        style={{ background: '#dc3545', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        Eliminar
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -241,11 +271,12 @@ const Catalogos = () => {
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#f5f5f5' }}>
+                <tr style={{ background: "var(--card-bg)"  }}>
                   <th style={{ padding: 12, textAlign: 'left', border: '1px solid #ddd' }}>Nombre</th>
                   <th style={{ padding: 12, textAlign: 'left', border: '1px solid #ddd' }}>Ticker</th>
                   <th style={{ padding: 12, textAlign: 'left', border: '1px solid #ddd' }}>Mercado</th>
                   <th style={{ padding: 12, textAlign: 'right', border: '1px solid #ddd' }}>Precio Actual</th>
+                  <th style={{ padding: 12, textAlign: 'center', border: '1px solid #ddd' }}>Precios Anteriores</th>
                   <th style={{ padding: 12, textAlign: 'right', border: '1px solid #ddd' }}>Acciones Totales</th>
                   <th style={{ padding: 12, textAlign: 'right', border: '1px solid #ddd' }}>Capitalización</th>
                   <th style={{ padding: 12, textAlign: 'center', border: '1px solid #ddd' }}>Acciones</th>
@@ -257,14 +288,26 @@ const Catalogos = () => {
                     <td style={{ padding: 12, border: '1px solid #ddd' }}>{empresa.nombre}</td>
                     <td style={{ padding: 12, border: '1px solid #ddd' }}>{empresa.ticker}</td>
                     <td style={{ padding: 12, border: '1px solid #ddd' }}>{empresa.mercado}</td>
-                    <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'right' }}>
+                    <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'right', fontWeight: 'bold' }}>
                       {empresa.precio_actual ? `$${empresa.precio_actual.toFixed(2)}` : '-'}
                     </td>
-                    <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'right' }}>
-                      {empresa.acciones_totales || '-'}
+                    <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'center' }}>
+                      {preciosHistoricos[empresa.id] && preciosHistoricos[empresa.id].length > 0 ? (
+                        <button 
+                          onClick={() => handleVerPrecios(empresa)}
+                          style={{ padding: '4px 12px', fontSize: '0.9em', cursor: 'pointer' }}
+                        >
+                          Ver ({preciosHistoricos[empresa.id].length})
+                        </button>
+                      ) : (
+                        <span style={{ color: '#999', fontSize: '0.9em' }}>Sin historial</span>
+                      )}
                     </td>
                     <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'right' }}>
-                      {empresa.capitalizacion ? `$${empresa.capitalizacion.toFixed(2)}` : '-'}
+                      {empresa.acciones_totales ? empresa.acciones_totales.toLocaleString() : '-'}
+                    </td>
+                    <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'right' }}>
+                      {empresa.capitalizacion ? `$${empresa.capitalizacion.toLocaleString()}` : '-'}
                     </td>
                     <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'center' }}>
                       <button onClick={() => handleEditEmpresa(empresa)} style={{ marginRight: 8 }}>Editar</button>
@@ -273,7 +316,7 @@ const Catalogos = () => {
                           setEmpresaToDelist(empresa); 
                           setShowDelistModal(true); 
                         }}
-                        style={{ background: '#dc3545', color: 'white' }}
+                        style={{ background: '#dc3545', color: 'white', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer' }}
                       >
                         Delistar
                       </button>
@@ -284,10 +327,68 @@ const Catalogos = () => {
             </table>
           </div>
 
+          {/* MODAL PRECIOS ANTERIORES */}
+          {showPreciosModal && selectedEmpresaPrecios && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: "var(--card-bg)" , padding: 24, borderRadius: 8, minWidth: 500 }}>
+                <h3>Precios Anteriores: {selectedEmpresaPrecios.nombre}</h3>
+                <p style={{ color: '#666', marginBottom: 16 }}>
+                  Precio Actual: <strong>${selectedEmpresaPrecios.precio_actual?.toFixed(2)}</strong>
+                </p>
+                
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
+                  <thead>
+                    <tr style={{ background: "var(--card-bg)"  }}>
+                      <th style={{ padding: 8, textAlign: 'left', border: '1px solid #ddd' }}>Fecha</th>
+                      <th style={{ padding: 8, textAlign: 'right', border: '1px solid #ddd' }}>Precio</th>
+                      <th style={{ padding: 8, textAlign: 'right', border: '1px solid #ddd' }}>Cambio</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preciosHistoricos[selectedEmpresaPrecios.id]?.map((hist, idx) => {
+                      const cambio = idx === 0 
+                        ? selectedEmpresaPrecios.precio_actual - hist.precio
+                        : hist.precio - preciosHistoricos[selectedEmpresaPrecios.id][idx - 1].precio;
+                      const porcentaje = idx === 0
+                        ? ((cambio / hist.precio) * 100)
+                        : ((cambio / preciosHistoricos[selectedEmpresaPrecios.id][idx - 1].precio) * 100);
+                      
+                      return (
+                        <tr key={idx}>
+                          <td style={{ padding: 8, border: '1px solid #ddd' }}>
+                            {new Date(hist.fecha).toLocaleDateString()}
+                          </td>
+                          <td style={{ padding: 8, border: '1px solid #ddd', textAlign: 'right' }}>
+                            ${hist.precio.toFixed(2)}
+                          </td>
+                          <td style={{ 
+                            padding: 8, 
+                            border: '1px solid #ddd', 
+                            textAlign: 'right',
+                            color: cambio >= 0 ? '#28a745' : '#dc3545',
+                            fontWeight: 'bold'
+                          }}>
+                            {cambio >= 0 ? '+' : ''}{cambio.toFixed(2)} ({porcentaje.toFixed(1)}%)
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button onClick={() => { setShowPreciosModal(false); setSelectedEmpresaPrecios(null); }}>
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* MODAL MERCADO */}
           {showMercadoModal && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: 24, borderRadius: 8, minWidth: 400 }}>
+              <div style={{ background: "var(--card-bg)" , padding: 24, borderRadius: 8, minWidth: 400 }}>
                 <h3>{editingMercado ? 'Editar Mercado' : 'Crear Mercado'}</h3>
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', marginBottom: 8 }}>Nombre del Mercado:</label>
@@ -312,7 +413,7 @@ const Catalogos = () => {
           {/* MODAL EMPRESA */}
           {showEmpresaModal && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: 24, borderRadius: 8, minWidth: 500 }}>
+              <div style={{ background: "var(--card-bg)" , padding: 24, borderRadius: 8, minWidth: 500 }}>
                 <h3>{editingEmpresa ? 'Editar Empresa' : 'Crear Empresa'}</h3>
                 
                 <div style={{ marginBottom: 16 }}>
@@ -394,7 +495,7 @@ const Catalogos = () => {
           {/* MODAL DELISTAR */}
           {showDelistModal && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: 24, borderRadius: 8, minWidth: 500 }}>
+              <div style={{ background: "var(--card-bg)" , padding: 24, borderRadius: 8, minWidth: 500 }}>
                 <h3 style={{ color: '#dc3545' }}>Delistar Empresa</h3>
                 <p style={{ marginBottom: 16 }}>
                   ¿Está seguro de delistar <strong>{empresaToDelist?.nombre}</strong>?
@@ -418,7 +519,7 @@ const Catalogos = () => {
 
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ display: 'block', marginBottom: 8 }}>
-                    Precio de Liquidación (, por defecto se usa el precio actual: ${empresaToDelist?.precio_actual?.toFixed(2)}):
+                    Precio de Liquidación (opcional, por defecto se usa el precio actual: ${empresaToDelist?.precio_actual?.toFixed(2)}):
                   </label>
                   <input
                     type="number"

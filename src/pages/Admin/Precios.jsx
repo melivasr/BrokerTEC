@@ -38,7 +38,6 @@ const Precios = () => {
   const handleEmpresaClick = async (empresa) => {
     setSelectedEmpresa(empresa);
     setError('');
-    
     try {
       const data = await getHistorialPrecio(empresa.id);
       setHistorico(data);
@@ -52,18 +51,15 @@ const Precios = () => {
     setError('');
     setSuccess('');
 
-    // Validaciones
     if (!precio || parseFloat(precio) <= 0) {
       setError('precio inválido');
       return;
     }
-
     if (!fecha) {
       setError('formato de fecha inválido');
       return;
     }
 
-    // Validar que la fecha no sea futura
     const fechaSeleccionada = new Date(fecha);
     const ahora = new Date();
     if (fechaSeleccionada > ahora) {
@@ -82,6 +78,10 @@ const Precios = () => {
       setPrecio('');
       setFecha('');
       fetchEmpresas();
+
+      if (selectedEmpresa) {
+        handleEmpresaClick(selectedEmpresa);
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'auth fallida');
     }
@@ -92,7 +92,6 @@ const Precios = () => {
     setSuccess('');
 
     try {
-      // Cargar precios actuales para todas las empresas que tengan inventario
       const preciosData = empresas
         .filter(e => e.precio_actual)
         .map(e => ({
@@ -121,8 +120,7 @@ const Precios = () => {
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
+      minute: '2-digit'
     });
   };
 
@@ -143,14 +141,14 @@ const Precios = () => {
 
           {error && <ErrorMessage message={error} />}
           {success && (
-            <div style={{ padding: 12, background: '#d4edda', color: '#155724', borderRadius: 4, marginBottom: 16 }}>
+            <div style={{ padding: 12, background: "var(--card-bg)", color: '#155724', borderRadius: 4, marginBottom: 16 }}>
               {success}
             </div>
           )}
 
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 32 }}>
             <thead>
-              <tr style={{ background: '#f5f5f5' }}>
+              <tr style={{ background: "var(--card-bg)" }}>
                 <th style={{ padding: 12, textAlign: 'left', border: '1px solid #ddd' }}>Empresa</th>
                 <th style={{ padding: 12, textAlign: 'left', border: '1px solid #ddd' }}>Ticker</th>
                 <th style={{ padding: 12, textAlign: 'left', border: '1px solid #ddd' }}>Mercado</th>
@@ -176,12 +174,13 @@ const Precios = () => {
                       onClick={() => handleEmpresaClick(empresa)}
                       style={{ marginRight: 8, padding: '6px 12px', cursor: 'pointer' }}
                     >
-                      Ver Histórico
+                      Ver Gráfico
                     </button>
                     <button 
                       onClick={() => { 
                         setSelectedEmpresa(empresa); 
                         setPrecio(empresa.precio_actual || '');
+                        setFecha('');
                         setShowModal(true); 
                       }}
                       style={{ background: '#007bff', color: 'white', padding: '6px 12px', border: 'none', borderRadius: 4, cursor: 'pointer' }}
@@ -234,7 +233,7 @@ const Precios = () => {
           {/* MODAL CARGA MANUAL */}
           {showModal && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: 24, borderRadius: 8, minWidth: 500 }}>
+              <div style={{ background: "var(--card-bg)", padding: 24, borderRadius: 8, minWidth: 500 }}>
                 <h3>Cargar Precio Manual</h3>
                 <p style={{ color: '#666', marginBottom: 16 }}>
                   Empresa: <strong>{selectedEmpresa?.nombre}</strong> ({selectedEmpresa?.ticker})
@@ -263,12 +262,13 @@ const Precios = () => {
                     style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4 }}
                   />
                   <small style={{ color: '#666', display: 'block', marginTop: 4 }}>
-                    Formato: YYYY-MM-DD HH:MM
+                    La fecha no puede ser futura. Formato: YYYY-MM-DD HH:MM
                   </small>
                 </div>
 
-                <div style={{ padding: 12, background: '#fff3cd', color: '#856404', borderRadius: 4, marginBottom: 16, fontSize: '0.9em' }}>
-                   Esta acción será auditada. Asegúrese de que el precio y la fecha sean correctos.
+                <div style={{ padding: 12, background: "var(--card-bg)", color: '#856404', borderRadius: 4, marginBottom: 16, fontSize: '0.9em' }}>
+                  <strong>Nota:</strong> Esta acción será auditada. Asegúrese de que el precio y la fecha sean correctos. 
+                  El precio se guardará en el historial y se actualizará el precio actual.
                 </div>
 
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
