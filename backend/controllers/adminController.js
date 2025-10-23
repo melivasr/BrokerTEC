@@ -302,39 +302,26 @@ export async function delistarEmpresa(req, res) {
 // PRECIOS & CARGA
 // Obtener historial de precios de una empresa
 export async function getHistorialPrecio(req, res) {
-    const { id } = req.params;
+  const { id } = req.params;
 
-    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (!guidRegex.test(id)) {
-        return res.status(400).json({ message: 'ID de empresa inválido' });
-    }
+  const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  if (!guidRegex.test(id)) {
+    return res.status(400).json({ message: 'ID de empresa inválido' });
+  }
 
-    try {
-        const historial = await queryDB(`
-            SELECT fecha, precio
-            FROM Inventario_Historial
-            WHERE id_empresa = @id_empresa
-            ORDER BY fecha ASC
-        `, { id_empresa: id });
+  try {
+    const historial = await queryDB(`
+      SELECT fecha, precio
+      FROM Inventario_Historial
+      WHERE id_empresa = @id_empresa
+      ORDER BY fecha ASC
+    `, { id_empresa: id });
 
-        // Agregar precio actual
-        const precioActual = await queryDB(
-            `SELECT precio FROM Inventario WHERE id_empresa = @id_empresa`,
-            { id_empresa: id }
-        );
-
-        if (precioActual.length > 0) {
-            historial.push({
-                fecha: new Date(),
-                precio: precioActual[0].precio
-            });
-        }
-
-        res.json(historial);
-    } catch (error) {
-        console.error('Error:', error);
-        res.status(500).json({ message: 'Error al obtener historial de precios' });
-    }
+    res.json(historial);
+  } catch (error) {
+    console.error('Error:', error);
+    res.status(500).json({ message: 'Error al obtener historial de precios' });
+  }
 }
 
 // Cargar precio manual

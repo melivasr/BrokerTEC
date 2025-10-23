@@ -5,6 +5,25 @@ import {getMercados, createMercado, updateMercado, deleteMercado,
 import ErrorMessage from '../../components/ErrorMessage';
 import Sidebar from '../../components/Sidebar';
 
+const formatFechaCR = (fecha) =>
+  new Date(fecha).toLocaleString('es-CR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+const compressConsecutiveEquals = (rows) => {
+  const out = [];
+  for (const r of rows) {
+    if (!out.length || out[out.length - 1].precio !== r.precio) {
+      out.push(r);
+    }
+  }
+  return out;
+};
+
 const Catalogos = () => {
   const [mercados, setMercados] = useState([]);
   const [empresas, setEmpresas] = useState([]);
@@ -53,8 +72,8 @@ const Catalogos = () => {
         if (empresa.precio_actual) {
           try {
             const historial = await getHistorialPrecio(empresa.id);
-            // Tomar los últimos 5 precios (excluyendo el actual)
-            historicos[empresa.id] = historial.slice(-6, -1).reverse();
+            const limpio = compressConsecutiveEquals(historial);
+            historicos[empresa.id] = limpio.slice().reverse();
           } catch (err) {
             historicos[empresa.id] = [];
           }
@@ -345,18 +364,16 @@ const Catalogos = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {preciosHistoricos[selectedEmpresaPrecios.id]?.map((hist, idx) => {
-                      const cambio = idx === 0 
-                        ? selectedEmpresaPrecios.precio_actual - hist.precio
-                        : hist.precio - preciosHistoricos[selectedEmpresaPrecios.id][idx - 1].precio;
-                      const porcentaje = idx === 0
-                        ? ((cambio / hist.precio) * 100)
-                        : ((cambio / preciosHistoricos[selectedEmpresaPrecios.id][idx - 1].precio) * 100);
+                    {preciosHistoricos[selectedEmpresaPrecios.id]?.map((hist, idx, arr) => {
+                      const prev = arr[idx + 1];
+                      const cambio = prev ? (hist.precio - prev.precio) : 0;
+                      const base = prev ? prev.precio : hist.precio;
+                      const porcentaje = base ? ((cambio / base) * 100) : 0;
                       
                       return (
                         <tr key={idx}>
                           <td style={{ padding: 8, border: '1px solid #ddd' }}>
-                            {new Date(hist.fecha).toLocaleDateString()}
+                            {formatFechaCR(hist.fecha)}
                           </td>
                           <td style={{ padding: 8, border: '1px solid #ddd', textAlign: 'right' }}>
                             ${hist.precio.toFixed(2)}
