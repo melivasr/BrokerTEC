@@ -1,294 +1,253 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  getEmpresasAdmin, 
-  getHistorialPrecio, 
-  cargarPrecioManual, 
-  cargarPreciosBatch 
-} from '../../services/adminService';
+import { getEmpresasAdmin, getHistorialPrecio, cargarPrecioManual, cargarPreciosBatch } from '../../services/adminService';
 import ErrorMessage from '../../components/ErrorMessage';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import Sidebar from '../../components/Sidebar';
 
+const formatFecha = (fecha) => fecha ? new Date(fecha).toLocaleString('es-CR', {
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+}) : '-';
+
+const formatFechaCorta = (fecha, isMobile) => {
+  const date = new Date(fecha);
+  return isMobile 
+    ? date.toLocaleDateString('es-CR', { month: 'numeric', day: 'numeric' })
+    : date.toLocaleDateString('es-CR', { month: 'short', day: 'numeric' });
+};
+
+// Estilos
+const tableCell = { padding: 12, border: '1px solid #ddd' };
+const modalInput = (isMobile) => ({ 
+  width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4, boxSizing: 'border-box',
+  fontSize: isMobile ? '16px' : '14px'
+});
+
+// Componente tabla de empresas
+const EmpresasTable = ({ empresas, isMobile, onVerGrafico, onCargarPrecio }) => (
+  isMobile ? (
+    <div style={{ marginBottom: 32 }}>
+      {empresas.map((e) => (
+        <div key={e.id} className="card" style={{ marginBottom: 16 }}>
+          <h4 style={{ marginTop: 0, marginBottom: 8 }}>{e.nombre} ({e.ticker})</h4>
+          <p style={{ margin: '4px 0', fontSize: 14 }}><strong>Mercado:</strong> {e.mercado}</p>
+          <p style={{ margin: '4px 0', fontSize: 14 }}>
+            <strong>Precio:</strong>{' '}
+            <span style={{ fontSize: 18, fontWeight: 'bold', color: e.precio_actual ? '#28a745' : '#999' }}>
+              {e.precio_actual ? `$${e.precio_actual.toFixed(2)}` : '-'}
+            </span>
+          </p>
+          <p style={{ margin: '4px 0', fontSize: 13, color: '#666' }}>
+            <strong>Actualizado:</strong> {formatFecha(e.fecha_actualizacion)}
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexDirection: 'column', marginTop: 12 }}>
+            <button onClick={() => onVerGrafico(e)} className="btn-block">Ver Gráfico</button>
+            <button onClick={() => onCargarPrecio(e)} className="btn-block" style={{ background: '#007bff', color: 'white' }}>
+              Cargar Precio
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 32 }}>
+      <thead>
+        <tr>
+          <th style={{ ...tableCell, textAlign: 'left' }}>Empresa</th>
+          <th style={{ ...tableCell, textAlign: 'left' }}>Ticker</th>
+          <th style={{ ...tableCell, textAlign: 'left' }}>Mercado</th>
+          <th style={{ ...tableCell, textAlign: 'right' }}>Precio</th>
+          <th style={{ ...tableCell, textAlign: 'center' }}>Actualización</th>
+          <th style={{ ...tableCell, textAlign: 'center', width: 250 }}>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {empresas.map((e) => (
+          <tr key={e.id}>
+            <td style={tableCell}>{e.nombre}</td>
+            <td style={tableCell}>{e.ticker}</td>
+            <td style={tableCell}>{e.mercado}</td>
+            <td style={{ ...tableCell, textAlign: 'right', fontWeight: 'bold' }}>
+              {e.precio_actual ? `$${e.precio_actual.toFixed(2)}` : '-'}
+            </td>
+            <td style={{ ...tableCell, textAlign: 'center', fontSize: '0.9em' }}>{formatFecha(e.fecha_actualizacion)}</td>
+            <td style={{ ...tableCell, textAlign: 'center' }}>
+              <button onClick={() => onVerGrafico(e)} style={{ marginRight: 8, padding: '6px 12px' }}>Ver Gráfico</button>
+              <button onClick={() => onCargarPrecio(e)} style={{ background: '#007bff', color: 'white', padding: '6px 12px', border: 'none', borderRadius: 4 }}>
+                Cargar Precio
+              </button>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+);
+
+// Componente gráfico
+const GraficoHistorial = ({ empresa, historico, isMobile }) => (
+  <div className="card" style={{ marginTop: 32 }}>
+    <h3 style={{ marginTop: 0 }}>Precio vs. Tiempo: {empresa.nombre} ({empresa.ticker})</h3>
+    {historico.length > 0 ? (
+      <div style={{ width: '100%', marginTop: 16 }}>
+        <ResponsiveContainer width="100%" height={isMobile ? 280 : 400}>
+          <LineChart data={historico} margin={{ top: 5, right: isMobile ? 5 : 20, left: isMobile ? -20 : 0, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="fecha" 
+              tickFormatter={(v) => formatFechaCorta(v, isMobile)}
+              tick={{ fontSize: isMobile ? 10 : 12 }}
+              angle={isMobile ? -45 : 0}
+              textAnchor={isMobile ? 'end' : 'middle'}
+              height={isMobile ? 60 : 30}
+            />
+            <YAxis 
+              domain={['dataMin - 5', 'dataMax + 5']}
+              tickFormatter={(v) => `$${v.toFixed(isMobile ? 0 : 2)}`}
+              tick={{ fontSize: isMobile ? 10 : 12 }}
+              width={isMobile ? 50 : 60}
+            />
+            <Tooltip 
+              formatter={(v) => [`$${v.toFixed(2)}`, 'Precio']}
+              labelFormatter={(l) => new Date(l).toLocaleString('es-CR')}
+              contentStyle={{ fontSize: isMobile ? 12 : 14 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="precio" 
+              stroke="#007bff" 
+              strokeWidth={2}
+              dot={!isMobile ? { fill: '#007bff', r: 4 } : false}
+              activeDot={{ r: 6 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    ) : (
+      <div className="card" style={{ padding: 40, textAlign: 'center', color: '#666', marginTop: 16 }}>
+        No hay historial de precios disponible
+      </div>
+    )}
+  </div>
+);
+
 const Precios = () => {
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [empresas, setEmpresas] = useState([]);
   const [selectedEmpresa, setSelectedEmpresa] = useState(null);
   const [historico, setHistorico] = useState([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  
-  // Modal carga manual
   const [showModal, setShowModal] = useState(false);
   const [precio, setPrecio] = useState('');
   const [fecha, setFecha] = useState('');
 
   useEffect(() => {
-    fetchEmpresas();
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => { fetchEmpresas(); }, []);
 
   const fetchEmpresas = async () => {
     setError('');
     try {
-      const data = await getEmpresasAdmin();
-      setEmpresas(data);
-    } catch (err) {
-      setError('auth fallida');
-    }
+      setEmpresas(await getEmpresasAdmin());
+    } catch { setError('auth fallida'); }
   };
 
   const handleEmpresaClick = async (empresa) => {
     setSelectedEmpresa(empresa);
     setError('');
     try {
-      const data = await getHistorialPrecio(empresa.id);
-      setHistorico(data);
-    } catch (err) {
+      setHistorico(await getHistorialPrecio(empresa.id));
+    } catch {
       setHistorico([]);
-      setError('Error al obtener historial de precios');
+      setError('Error al obtener historial');
     }
   };
 
   const handleCargaManual = async () => {
-    setError('');
-    setSuccess('');
-
-    if (!precio || parseFloat(precio) <= 0) {
-      setError('precio inválido');
-      return;
-    }
-    if (!fecha) {
-      setError('formato de fecha inválido');
-      return;
-    }
-
+    setError(''); setSuccess('');
+    if (!precio || parseFloat(precio) <= 0) { setError('precio inválido'); return; }
+    if (!fecha) { setError('fecha inválida'); return; }
+    
     const fechaSeleccionada = new Date(fecha);
-    const ahora = new Date();
-    if (fechaSeleccionada > ahora) {
-      setError('La fecha no puede ser futura');
-      return;
-    }
+    if (fechaSeleccionada > new Date()) { setError('Fecha no puede ser futura'); return; }
 
     try {
-      await cargarPrecioManual(selectedEmpresa.id, { 
-        precio: parseFloat(precio), 
-        fecha: fechaSeleccionada.toISOString() 
-      });
-      
-      setSuccess('Precio cargado exitosamente');
+      await cargarPrecioManual(selectedEmpresa.id, { precio: parseFloat(precio), fecha: fechaSeleccionada.toISOString() });
+      setSuccess('Precio cargado');
       setShowModal(false);
-      setPrecio('');
-      setFecha('');
+      setPrecio(''); setFecha('');
       fetchEmpresas();
-
-      if (selectedEmpresa) {
-        handleEmpresaClick(selectedEmpresa);
-      }
-    } catch (err) {
-      setError(err.response?.data?.message || 'auth fallida');
-    }
+      if (selectedEmpresa) handleEmpresaClick(selectedEmpresa);
+    } catch (err) { setError(err.response?.data?.message || 'Error'); }
   };
 
   const handleCargaBatch = async () => {
-    setError('');
-    setSuccess('');
-
+    setError(''); setSuccess('');
     try {
-      const preciosData = empresas
-        .filter(e => e.precio_actual)
-        .map(e => ({
-          id_empresa: e.id,
-          precio: e.precio_actual
-        }));
-
-      if (preciosData.length === 0) {
-        setError('No hay empresas con precios para cargar');
-        return;
-      }
-      
+      const preciosData = empresas.filter(e => e.precio_actual).map(e => ({ id_empresa: e.id, precio: e.precio_actual }));
+      if (preciosData.length === 0) { setError('No hay precios para cargar'); return; }
       const result = await cargarPreciosBatch(preciosData);
-      setSuccess(`Carga batch completada. Exitosos: ${result.exitosos}, Fallidos: ${result.fallidos}`);
+      setSuccess(`Batch: ${result.exitosos} ok, ${result.fallidos} fallidos`);
       fetchEmpresas();
-    } catch (err) {
-      setError(err.response?.data?.message || 'auth fallida');
-    }
+    } catch (err) { setError(err.response?.data?.message || 'Error'); }
   };
 
-  const formatFecha = (fecha) => {
-    if (!fecha) return '-';
-    const date = new Date(fecha);
-    return date.toLocaleString('es-CR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const inputStyle = modalInput(isMobile);
 
   return (
     <div style={{ display: 'flex' }}>
       <Sidebar rol="Admin" />
-      <main style={{ flex: 1, padding: 24 }}>
-        <div style={{ padding: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-            <h2>Precios & Carga</h2>
-            <button 
-              onClick={handleCargaBatch}
-              style={{ background: '#28a745', color: 'white', padding: '10px 20px', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-            >
-              Carga Automática (API)
-            </button>
-          </div>
+      <main className="app-main">
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', marginBottom: 24, gap: 12 }}>
+          <h2 style={{ margin: 0 }}>Precios & Carga</h2>
+          <button onClick={handleCargaBatch} style={{ background: '#28a745', color: 'white' }} className="btn-block">
+            {isMobile ? 'Carga API' : 'Carga Automática (API)'}
+          </button>
+        </div>
 
-          {error && <ErrorMessage message={error} />}
-          {success && (
-            <div style={{ padding: 12, background: "var(--card-bg)", color: '#155724', borderRadius: 4, marginBottom: 16 }}>
-              {success}
-            </div>
-          )}
+        {error && <ErrorMessage message={error} />}
+        {success && <div className="card" style={{ padding: 12, color: '#155724', marginBottom: 16 }}>{success}</div>}
 
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 32 }}>
-            <thead>
-              <tr style={{ background: "var(--card-bg)" }}>
-                <th style={{ padding: 12, textAlign: 'left', border: '1px solid #ddd' }}>Empresa</th>
-                <th style={{ padding: 12, textAlign: 'left', border: '1px solid #ddd' }}>Ticker</th>
-                <th style={{ padding: 12, textAlign: 'left', border: '1px solid #ddd' }}>Mercado</th>
-                <th style={{ padding: 12, textAlign: 'right', border: '1px solid #ddd' }}>Precio Actual</th>
-                <th style={{ padding: 12, textAlign: 'center', border: '1px solid #ddd' }}>Fecha Actualización</th>
-                <th style={{ padding: 12, textAlign: 'center', border: '1px solid #ddd' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {empresas.map((empresa) => (
-                <tr key={empresa.id} style={{ cursor: 'pointer' }}>
-                  <td style={{ padding: 12, border: '1px solid #ddd' }}>{empresa.nombre}</td>
-                  <td style={{ padding: 12, border: '1px solid #ddd' }}>{empresa.ticker}</td>
-                  <td style={{ padding: 12, border: '1px solid #ddd' }}>{empresa.mercado}</td>
-                  <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'right', fontWeight: 'bold' }}>
-                    {empresa.precio_actual ? `$${empresa.precio_actual.toFixed(2)}` : '-'}
-                  </td>
-                  <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'center', fontSize: '0.9em' }}>
-                    {formatFecha(empresa.fecha_actualizacion)}
-                  </td>
-                  <td style={{ padding: 12, border: '1px solid #ddd', textAlign: 'center' }}>
-                    <button 
-                      onClick={() => handleEmpresaClick(empresa)}
-                      style={{ marginRight: 8, padding: '6px 12px', cursor: 'pointer' }}
-                    >
-                      Ver Gráfico
-                    </button>
-                    <button 
-                      onClick={() => { 
-                        setSelectedEmpresa(empresa); 
-                        setPrecio(empresa.precio_actual || '');
-                        setFecha('');
-                        setShowModal(true); 
-                      }}
-                      style={{ background: '#007bff', color: 'white', padding: '6px 12px', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                    >
-                      Cargar Precio
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <EmpresasTable 
+          empresas={empresas}
+          isMobile={isMobile}
+          onVerGrafico={handleEmpresaClick}
+          onCargarPrecio={(e) => { setSelectedEmpresa(e); setPrecio(e.precio_actual || ''); setFecha(''); setShowModal(true); }}
+        />
 
-          {/* GRAFICO DE HISTORIAL */}
-          {selectedEmpresa && (
-            <div style={{ marginTop: 32, padding: 24, border: '1px solid #ddd', borderRadius: 8 }}>
-              <h3>Precio vs. Tiempo: {selectedEmpresa.nombre} ({selectedEmpresa.ticker})</h3>
-              {historico.length > 0 ? (
-                <ResponsiveContainer width="100%" height={400}>
-                  <LineChart data={historico}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis 
-                      dataKey="fecha" 
-                      tickFormatter={(tick) => new Date(tick).toLocaleDateString()}
-                    />
-                    <YAxis 
-                      domain={['dataMin - 5', 'dataMax + 5']}
-                      tickFormatter={(tick) => `$${tick.toFixed(2)}`}
-                    />
-                    <Tooltip 
-                      formatter={(value) => [`$${value.toFixed(2)}`, 'Precio']}
-                      labelFormatter={(label) => new Date(label).toLocaleString()}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="precio" 
-                      stroke="#007bff" 
-                      strokeWidth={2}
-                      dot={{ fill: '#007bff', r: 4 }}
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <div style={{ padding: 40, textAlign: 'center', color: '#666' }}>
-                  No hay historial de precios disponible para esta empresa
-                </div>
-              )}
-            </div>
-          )}
+        {selectedEmpresa && <GraficoHistorial empresa={selectedEmpresa} historico={historico} isMobile={isMobile} />}
 
-          {/* MODAL CARGA MANUAL */}
-          {showModal && (
-            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: "var(--card-bg)", padding: 24, borderRadius: 8, minWidth: 500 }}>
-                <h3>Cargar Precio Manual</h3>
-                <p style={{ color: '#666', marginBottom: 16 }}>
-                  Empresa: <strong>{selectedEmpresa?.nombre}</strong> ({selectedEmpresa?.ticker})
-                </p>
-
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8 }}>Precio:</label>
-                  <input
-                    type="number"
-                    value={precio}
-                    onChange={(e) => setPrecio(e.target.value)}
-                    placeholder="Ej: 150.50"
-                    min="0.01"
-                    step="0.01"
-                    style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4 }}
-                  />
-                </div>
-
-                <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', marginBottom: 8 }}>Fecha y Hora:</label>
-                  <input
-                    type="datetime-local"
-                    value={fecha}
-                    onChange={(e) => setFecha(e.target.value)}
-                    max={new Date().toISOString().slice(0, 16)}
-                    style={{ width: '100%', padding: 8, border: '1px solid #ddd', borderRadius: 4 }}
-                  />
-                  <small style={{ color: '#666', display: 'block', marginTop: 4 }}>
-                    La fecha no puede ser futura. Formato: YYYY-MM-DD HH:MM
-                  </small>
-                </div>
-
-                <div style={{ padding: 12, background: "var(--card-bg)", color: '#856404', borderRadius: 4, marginBottom: 16, fontSize: '0.9em' }}>
-                  <strong>Nota:</strong> Esta acción será auditada. Asegúrese de que el precio y la fecha sean correctos. 
-                  El precio se guardará en el historial y se actualizará el precio actual.
-                </div>
-
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                  <button 
-                    onClick={() => { setShowModal(false); setPrecio(''); setFecha(''); }}
-                    style={{ padding: '8px 16px', cursor: 'pointer' }}
-                  >
-                    Cancelar
-                  </button>
-                  <button 
-                    onClick={handleCargaManual}
-                    style={{ background: '#007bff', color: 'white', padding: '8px 16px', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Confirmar Carga
-                  </button>
-                </div>
+        {/* MODAL */}
+        {showModal && (
+          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
+            <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600 }}>
+              <h3>Cargar Precio Manual</h3>
+              <p style={{ color: '#666', marginBottom: 16 }}>
+                <strong>{selectedEmpresa?.nombre}</strong> ({selectedEmpresa?.ticker})
+              </p>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 8 }}>Precio:</label>
+                <input type="number" value={precio} onChange={(e) => setPrecio(e.target.value)} placeholder="150.50" min="0.01" step="0.01" style={inputStyle} />
+              </div>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 8 }}>Fecha y Hora:</label>
+                <input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} max={new Date().toISOString().slice(0, 16)} style={inputStyle} />
+                <small style={{ color: '#666', display: 'block', marginTop: 4 }}>Formato: YYYY-MM-DD HH:MM</small>
+              </div>
+              <div className="card" style={{ padding: 12, color: '#856404', marginBottom: 16, fontSize: isMobile ? '0.85em' : '0.9em' }}>
+                <strong>Nota:</strong> Acción auditada. Precio se guarda en historial.
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row' }}>
+                <button onClick={() => { setShowModal(false); setPrecio(''); setFecha(''); }} className="btn-block">Cancelar</button>
+                <button onClick={handleCargaManual} style={{ background: '#007bff', color: 'white' }} className="btn-block">Confirmar</button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   );
