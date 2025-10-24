@@ -140,6 +140,45 @@ const Precios = () => {
   const [showModal, setShowModal] = useState(false);
   const [precio, setPrecio] = useState('');
   const [fecha, setFecha] = useState('');
+  
+  const fetchTops = async () => {
+    // refresca el listado de empresas
+    await fetchEmpresas();
+
+    // si hay empresa seleccionada, refresca también su histórico
+    if (selectedEmpresa) {
+      try {
+        const h = await getHistorialPrecio(selectedEmpresa.id);
+        setHistorico(h);
+      } catch {
+        // si falla, deja el histórico como está o limpia
+        setHistorico([]);
+      }
+    }};
+    
+  useEffect(() => {
+      let alive = true;
+  
+      const refetch = async () => {
+        if (!alive) return;
+        await fetchTops();
+      };
+      // refresco periódico 
+      const id = setInterval(refetch, 8000);
+      // refrescar cuando la pestaña vuelve a estar visible
+      const onVisibility = () => {
+        if (document.visibilityState === 'visible') refetch();
+      };
+      document.addEventListener('visibilitychange', onVisibility);
+      const onFocus = () => refetch();
+      window.addEventListener('focus', onFocus);
+      return () => {
+        alive = false;
+        clearInterval(id);
+        document.removeEventListener('visibilitychange', onVisibility);
+        window.removeEventListener('focus', onFocus);
+      };
+    }, []);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);

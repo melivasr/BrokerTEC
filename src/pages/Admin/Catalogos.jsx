@@ -179,7 +179,7 @@ const Catalogos = () => {
   const [preciosHistoricos, setPreciosHistoricos] = useState({});
   const [showPreciosModal, setShowPreciosModal] = useState(false);
   const [selectedEmpresaPrecios, setSelectedEmpresaPrecios] = useState(null);
-
+  
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);

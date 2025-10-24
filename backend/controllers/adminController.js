@@ -3,6 +3,76 @@ import { queryDB } from "../config/db.js";
 const GUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 const isGuid = (v) => GUID.test(String(v || ''));
 
+// Actualizar billetera de un usuario
+export async function updateBilletera(req, res) {
+  const { id_billetera } = req.params;
+  const { limite_diario, categoria } = req.body;
+
+  if (!isGuid(id_billetera)) {
+    return res.status(400).json({ message: "ID de billetera inválido" });
+  }
+  if (categoria !== undefined && !['Junior', 'Mid', 'Senior'].includes(categoria)) {
+    return res.status(400).json({ message: "Categoría inválida" });
+  }
+  if (limite_diario !== undefined && Number(limite_diario) < 0) {
+    return res.status(400).json({ message: "Límite diario inválido" });
+  }
+  if (categoria === undefined && limite_diario === undefined) {
+    return res.status(400).json({ message: "Nada que actualizar" });
+  }
+
+  try {
+    const ex = await queryDB(`SELECT 1 FROM Billetera WHERE id=@id`, { id: id_billetera });
+    if (!ex.length) return res.status(404).json({ message: "Billetera no encontrada" });
+
+    if (categoria !== undefined) {
+      await queryDB(
+        `UPDATE Billetera SET categoria=@categoria WHERE id=@id`,
+        { categoria, id: id_billetera }
+      );
+    }
+    if (limite_diario !== undefined) {
+      await queryDB(
+        `UPDATE Billetera SET limite_diario=@lim WHERE id=@id`,
+        { lim: Number(limite_diario), id: id_billetera }
+      );
+    }
+
+    await queryDB(
+      `INSERT INTO Billetera_Historial
+        (id_billetera, categoria, fondos, limite_diario, consumo, bloqueo_hasta, recarga_monto)
+       SELECT id, categoria, fondos, limite_diario, consumo, bloqueo_hasta, NULL
+       FROM Billetera WHERE id=@id`,
+      { id: id_billetera }
+    );
+
+    res.json({ message: "Billetera actualizada" });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Error al actualizar billetera" });
+  }
+}
+
+// Obtener detalles de una billetera específica
+export async function getBilletera(req, res) {
+  const { id_billetera } = req.params;
+  if (!isGuid(id_billetera)) {
+    return res.status(400).json({ message: "ID de billetera inválido" });
+  }
+  try {
+    const rows = await queryDB(
+      `SELECT id, categoria, fondos, limite_diario, consumo, bloqueo_hasta
+       FROM Billetera WHERE id=@id`,
+      { id: id_billetera }
+    );
+    if (!rows.length) return res.status(404).json({ message: "Billetera no encontrada" });
+    res.json(rows[0]);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Error al obtener billetera" });
+  }
+}
+
 // Mercados
 
 export async function createMercado(req, res) {
@@ -151,55 +221,103 @@ export async function updateInventario(req, res) {
 export async function delistarEmpresa(req, res) {
   const { id } = req.params;
   const { justificacion, precio_liquidacion } = req.body;
-  
+
   if (!isGuid(id)) return res.status(400).json({ message: 'ID inválido' });
   if (!justificacion?.trim()) return res.status(400).json({ message: 'Justificación requerida' });
 
   try {
+    //Empresa + precio base
     const emp = await queryDB(
-      `SELECT e.nombre, e.ticker, i.precio, i.acciones_totales, i.acciones_disponibles
-       FROM Empresa e LEFT JOIN Inventario i ON e.id=i.id_empresa WHERE e.id=@id`, { id }
+      `SELECT e.nombre, e.ticker, i.precio
+         FROM Empresa e
+         LEFT JOIN Inventario i ON i.id_empresa = e.id
+        WHERE e.id = @id`, { id }
     );
     if (!emp.length) return res.status(404).json({ message: 'Empresa no encontrada' });
 
-    const precio = precio_liquidacion && Number(precio_liquidacion) > 0 ? Number(precio_liquidacion) : emp[0].precio || 0;
-    const activas = emp[0].acciones_totales - emp[0].acciones_disponibles;
+    const precio = (precio_liquidacion && Number(precio_liquidacion) > 0)
+      ? Number(precio_liquidacion)
+      : Number(emp[0].precio) || 0;
 
-    let liquidadas = 0, total = 0;
-    if (activas > 0) {
-      const pos = await queryDB(`
-        SELECT p.id, p.acciones, u.alias, u.id_billetera, u.id_portafolio
-        FROM Portafolio p
-        JOIN Usuario u ON p.id = u.id_portafolio
-        WHERE p.id_empresa = @id AND p.acciones > 0`, { id }
-      );
-
-      for (const p of pos) {
-        const monto = p.acciones * precio;
-        
-        await queryDB(`UPDATE Billetera SET fondos=fondos+@monto WHERE id=@id_billetera`, 
-          { monto, id_billetera: p.id_billetera });
-        
-        await queryDB(
-          `INSERT INTO Transaccion (alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad)
-           VALUES (@alias, @id_portafolio, @id_billetera, @id, 'Venta', @precio, @cantidad)`,
-          { alias: p.alias, id_portafolio: p.id_portafolio, id_billetera: p.id_billetera, id, precio, cantidad: p.acciones }
-        );
-        
-        total += monto;
-        liquidadas++;
-      }
+    if (precio <= 0) {
+      return res.status(400).json({ message: 'No hay precio válido para liquidar (fije precio_liquidacion o cargue precio actual)' });
     }
 
-    // Eliminar TODAS las filas de Portafolio que referencian esta empresa
-    await queryDB(`DELETE FROM Portafolio WHERE id_empresa = @id`, { id });
-    await queryDB(`DELETE FROM Empresa_Favorita WHERE id_empresa = @id`, { id });
-    await queryDB(`DELETE FROM Empresa WHERE id=@id`, { id });
+    // Posiciones NETAS por alias 
+    const posiciones = await queryDB(`
+      SELECT t.alias,
+             SUM(CASE WHEN t.tipo='Compra' THEN t.cantidad
+                      WHEN t.tipo='Venta'  THEN -t.cantidad ELSE 0 END) AS cantidad_neta
+        FROM Transaccion t
+       WHERE t.id_empresa = @id
+       GROUP BY t.alias
+      HAVING SUM(CASE WHEN t.tipo='Compra' THEN t.cantidad
+                      WHEN t.tipo='Venta'  THEN -t.cantidad ELSE 0 END) > 0
+    `, { id });
+
+    let totalLiquidado = 0;
+    let posicionesLiquidadas = 0;
+
+    for (const pos of posiciones) {
+      const cantidad = Number(pos.cantidad_neta);
+
+      // Datos del usuario wallet y portafolio
+      const u = await queryDB(
+        `SELECT id, id_billetera, id_portafolio FROM Usuario WHERE alias = @alias`,
+        { alias: pos.alias }
+      );
+      if (!u.length || !u[0].id_billetera || !u[0].id_portafolio) continue;
+      const idBilletera = u[0].id_billetera;
+      const idPortafolio = u[0].id_portafolio;
+
+      const monto = cantidad * precio;
+      //  Abonar al wallet
+      await queryDB(
+        `UPDATE Billetera SET fondos = fondos + @monto WHERE id = @id_billetera`,
+        { monto, id_billetera: idBilletera }
+      );
+      // Devolver acciones a Tesorería
+      await queryDB(
+        `UPDATE Inventario
+            SET acciones_disponibles = acciones_disponibles + @cantidad
+          WHERE id_empresa = @id`,
+        { cantidad, id }
+      );
+      // Registrar la "venta" por delist 
+      await queryDB(
+        `INSERT INTO Transaccion (alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad)
+         VALUES (@alias, @id_portafolio, @id_billetera, @id, 'Venta', @precio, @cantidad)`,
+        {
+          alias: pos.alias,
+          id_portafolio: idPortafolio,
+          id_billetera: idBilletera,
+          id,
+          precio,
+          cantidad
+        }
+      );
+
+      totalLiquidado += monto;
+      posicionesLiquidadas++;
+    }
+    // Cerrar posiciones en Portafolio 
+    await queryDB(
+      `UPDATE Portafolio SET acciones = 0 WHERE id_empresa = @id`,
+      { id }
+    );
+    //  Marcar empresa como delistada 
+    await queryDB(
+      `UPDATE Empresa
+          SET delistada = 1
+        WHERE id = @id`,
+      { id }
+    );
 
     res.json({
-      message: activas > 0 ? 'Empresa delistada con posiciones liquidadas' : 'Empresa delistada',
-      posiciones_liquidadas: liquidadas,
-      total_liquidado: total,
+      message: posicionesLiquidadas ? 'Empresa delistada con posiciones liquidadas' : 'Empresa delistada',
+      posiciones_liquidadas: posicionesLiquidadas,
+      total_liquidado: totalLiquidado,
+      precio_liquidacion: precio,
       justificacion
     });
   } catch (e) {
@@ -315,7 +433,7 @@ export async function cargarPreciosBatch(req, res) {
 export async function getUsuarios(_req, res) {
   try {
     const rows = await queryDB(`
-      SELECT id, alias, nombre, rol, habilitado, correo, telefono, direccion, pais_origen
+      SELECT id, alias, nombre, rol, habilitado, correo, telefono, direccion, pais_origen, id_billetera
       FROM Usuario
       ORDER BY alias
     `);
@@ -328,38 +446,40 @@ export async function getUsuarios(_req, res) {
 export async function getUsuarioCuentas(req, res) {
   const { id } = req.params;
   if (!isGuid(id)) return res.status(400).json({ message: 'ID inválido' });
+
   try {
-    const wallet = await queryDB(
-      `SELECT b.id, b.fondos AS saldo, b.categoria, b.limite_diario, b.consumo
-       FROM Usuario u JOIN Billetera b ON u.id_billetera=b.id
-       WHERE u.id=@id`,
+    const u = await queryDB(
+      `SELECT id, rol, id_billetera FROM Usuario WHERE id=@id`,
       { id }
     );
-    if (wallet.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+    if (!u.length) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    let wallet = null;
+    if (u[0].rol === 'Trader' && u[0].id_billetera) {
+      const w = await queryDB(
+        `SELECT id, fondos AS saldo, categoria, limite_diario, consumo
+         FROM Billetera WHERE id=@bid`,
+        { bid: u[0].id_billetera }
+      );
+      if (w.length) wallet = w[0];
+    }
 
     const mercados = await queryDB(
       `SELECT m.id, m.nombre
-       FROM Mercado_Habilitado mh
-       JOIN Mercado m ON m.id = mh.id_mercado
-       WHERE mh.id_usuario=@id
-       ORDER BY m.nombre`,
+         FROM Mercado_Habilitado mh
+         JOIN Mercado m ON m.id = mh.id_mercado
+        WHERE mh.id_usuario=@id
+        ORDER BY m.nombre`,
       { id }
     );
 
-    res.json({
-      wallet: {
-        id: wallet[0].id,
-        saldo: wallet[0].saldo,
-        categoria: wallet[0].categoria,
-        limite_diario: wallet[0].limite_diario,
-        consumo: wallet[0].consumo
-      },
-      mercados
-    });
+    res.json({ wallet, mercados });
   } catch (e) {
+    console.error(e);
     res.status(500).json({ message: 'Error al obtener cuentas' });
   }
 }
+
 
 // Mercados habilitados por usuario 
 export async function habilitarMercado(req, res) {

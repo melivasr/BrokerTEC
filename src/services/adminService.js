@@ -1,6 +1,19 @@
 import axios from "axios";
 import { authHeader } from "./authService";
 
+// Billetera 
+export const updateBilletera = async (idBilletera, data) => {
+  const res = await axios.put(`/api/admin/billetera/${idBilletera}`, data, {
+    headers: authHeader()});
+  return res.data;
+};
+
+export const getBilletera = async (idBilletera) => {
+  const res = await axios.get(`/api/admin/billetera/${idBilletera}`, {
+    headers: authHeader()});
+  return res.data;
+};
+
 // MERCADOS
 
 export async function createMercado(data) {

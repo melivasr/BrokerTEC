@@ -6,63 +6,37 @@ import { v4 as uuidv4 } from "uuid";
 // Registro de usuario
 export async function register(req, res) {
   const { alias, nombre, direccion, pais_origen, telefono, correo, password, rol } = req.body;
+
   try {
-    // Verificar si el alias o correo ya existen
-    const existing = await queryDB(
-      "SELECT * FROM Usuario WHERE alias = @alias OR correo = @correo",
+    // Validar duplicados
+    const exists = await queryDB(
+      "SELECT 1 FROM Usuario WHERE alias=@alias OR correo=@correo",
       { alias, correo }
     );
-    if (existing.length > 0) {
-      return res.status(400).json({ message: "Alias o correo ya registrado" });
-    }
-    // Encriptar contraseña
-  const contrasena_hash = await bcrypt.hash(password, 10);
+    if (exists.length) return res.status(400).json({ message: "Alias o correo ya registrado" });
 
-  // Crear billetera asociada segun rol
-    let categoria = "Junior";
-    if (rol === "Analista") categoria = "Mid";
-    if (rol === "Admin") categoria = "Senior";
+    // Hash
+    const contrasena_hash = await bcrypt.hash(password, 10);
 
-  const billeteraId = uuidv4();
-    await queryDB(
-    `INSERT INTO Billetera (id, categoria, fondos, limite_diario, consumo)
-    VALUES (@id, @categoria, 0, 0, 0)`,
-    { id: billeteraId, categoria }
-  );
+    const limite = (rol === 'Trader') ? 500 : 0;
+    const billetera = await queryDB(
+      `INSERT INTO Billetera (fondos, categoria, limite_diario, consumo, bloqueo_hasta)
+       OUTPUT INSERTED.id
+       VALUES (0, 'Junior', @limite, 0, NULL)`,
+      { limite }
+    );
+    const id_billetera = billetera[0].id;
 
-  // Si el usuario es Trader, crear también un portafolio vacío
-    let portafolioId = null;
-    if (rol === "Trader") {
-      portafolioId = uuidv4();
-      await queryDB(
-        `INSERT INTO Portafolio (id, id_empresa, acciones)
-         VALUES (@id, (SELECT TOP 1 id FROM Empresa), 0)`,
-        { id: portafolioId }
-      );
-    }
-
-  // Insertar usuario
     await queryDB(
       `INSERT INTO Usuario (id_billetera, id_portafolio, nombre, alias, direccion, pais_origen, telefono, correo, contrasena_hash, rol)
-       VALUES (@id_billetera, @id_portafolio, @nombre, @alias, @direccion, @pais_origen, @telefono, @correo, @contrasena_hash, @rol)`,
-      {
-        id_billetera: billeteraId,
-        id_portafolio: portafolioId,
-        nombre,
-        alias,
-        direccion,
-        pais_origen,
-        telefono,
-        correo,
-        contrasena_hash,
-        rol
-      }
+       VALUES (@id_billetera, NULL, @nombre, @alias, @direccion, @pais_origen, @telefono, @correo, @contrasena_hash, @rol)`,
+      { id_billetera, nombre, alias, direccion, pais_origen, telefono, correo, contrasena_hash, rol }
     );
 
     res.json({ message: "Usuario registrado correctamente" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error en el registro", error });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ message: "Error en el registro", error: e.message });
   }
 }
 

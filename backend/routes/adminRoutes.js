@@ -1,9 +1,12 @@
 import express from 'express';
 const router = express.Router();
-import {createMercado, updateMercado, deleteMercado, getEmpresasAdmin, createEmpresaAdmin,
+import {updateBilletera, getBilletera, createMercado, updateMercado, deleteMercado, getEmpresasAdmin, createEmpresaAdmin,
     updateEmpresa, updateInventario, delistarEmpresa, getHistorialPrecio, cargarPrecioManual, cargarPreciosBatch,     getUsuarios,
     getUsuarioCuentas, getTopWallet, getTopAcciones, habilitarMercado, deshabilitarMercado, deshabilitarUsuario} from '../controllers/adminController.js';
 import { verifyToken } from '../middlewares/authMiddleware.js';
+
+router.put('/billetera/:id_billetera', updateBilletera);
+router.get('/billetera/:id_billetera', getBilletera);
 
 router.use(verifyToken);
 router.post('/mercados', createMercado);
