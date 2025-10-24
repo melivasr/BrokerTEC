@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
-import { getCurrentUser, updateUser, deleteUser, changePassword, logout } from "../../services/authService";
+import { getCurrentUser,updateUser , updateUserById, deleteUser, changePassword, logout } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 
 export default function Perfil() {
@@ -38,17 +38,34 @@ export default function Perfil() {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
+    setError(""); setSuccess("");
+
     try {
-      await updateUser(form);
+      const payload = {
+        alias: form.alias,
+        nombre: form.nombre,
+        correo: form.correo,
+        direccion: form.direccion,
+        pais_origen: form.pais_origen,
+        telefono: form.telefono,
+        rol: user.rol,
+      };
+
+      const res = await updateUserById(user.id, payload);
+
+      const stored = getCurrentUser() || {};
+      const updatedUser = res?.user ? { ...stored, ...res.user } : { ...stored, ...payload };
+      if (stored.token) updatedUser.token = stored.token;
+
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      setUser(updatedUser);
       setSuccess("Datos actualizados correctamente.");
       setEditMode(false);
-      setUser({ ...user, ...form });
     } catch (err) {
       setError(err?.message || "Error al actualizar datos.");
     }
   };
+
 
   const handleDelete = async () => {
     if (!window.confirm("¿Seguro que deseas eliminar tu cuenta?")) return;
