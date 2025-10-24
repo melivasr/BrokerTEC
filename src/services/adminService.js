@@ -2,10 +2,6 @@ import axios from "axios";
 import { authHeader } from "./authService";
 
 // MERCADOS
-export async function getMercados() {
-    const res = await axios.get('/api/admin/mercados', { headers: authHeader() });
-    return res.data;
-}
 
 export async function createMercado(data) {
     const res = await axios.post('/api/admin/mercados', data, { headers: authHeader() });
@@ -36,6 +32,13 @@ export async function createEmpresaAdmin(data) {
 export async function updateEmpresa(id, data) {
     const res = await axios.put(`/api/admin/empresas/${id}`, data, { headers: authHeader() });
     return res.data;
+}
+
+export async function updateInventario(idEmpresa, acciones_totales) {
+  const response = await axios.put(`/api/admin/inventario/${idEmpresa}`,{ acciones_totales },
+    { headers: authHeader() }
+  );
+  return response.data;
 }
 
 export async function delistarEmpresa(id, justificacion, precioLiquidacion = null) {

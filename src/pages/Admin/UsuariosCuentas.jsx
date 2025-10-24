@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  getUsuarios, getUsuarioCuentas, deshabilitarUsuario, getTopWallet, getTopAcciones, getMercados, habilitarMercado, deshabilitarMercado
+  getUsuarios, getUsuarioCuentas, deshabilitarUsuario, getTopWallet, getTopAcciones, habilitarMercado, deshabilitarMercado
 } from '../../services/adminService';
+import {getMercados} from '../../services/analistaService';
 import { 
   register, updateUserById
 } from '../../services/authService';
@@ -149,7 +150,9 @@ const TopTradersCharts = ({ topWallet, topAcciones, isMobile }) => (
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis type="number" tickFormatter={(v) => `$${v}`} tick={{ fontSize: isMobile ? 10 : 12 }} />
           <YAxis type="category" dataKey="alias" width={isMobile ? 60 : 80} tick={{ fontSize: isMobile ? 10 : 12 }} />
-          <Tooltip formatter={(v) => `$${v.toFixed(2)}`} />
+          <Tooltip 
+          formatter={(v) => `$${v.toFixed(2)}`}
+          contentStyle={{  backgroundColor: "var(--card-bg)",fontSize: isMobile ? 12 : 14 }} />
           <Bar dataKey="saldo" fill="#007bff">
             <LabelList dataKey="saldo" position="right" formatter={(v) => `$${v}`} style={{ fontSize: isMobile ? 10 : 12 }} />
           </Bar>
@@ -164,7 +167,9 @@ const TopTradersCharts = ({ topWallet, topAcciones, isMobile }) => (
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis type="number" tickFormatter={(v) => `$${v}`} tick={{ fontSize: isMobile ? 10 : 12 }} />
           <YAxis type="category" dataKey="alias" width={isMobile ? 60 : 80} tick={{ fontSize: isMobile ? 10 : 12 }} />
-          <Tooltip formatter={(v) => `$${v.toFixed(2)}`} />
+          <Tooltip 
+          formatter={(v) => `$${v.toFixed(2)}`}
+          contentStyle={{  backgroundColor: "var(--card-bg)",fontSize: isMobile ? 12 : 14 }} />
           <Bar dataKey="valor_acciones" fill="#28a745">
             <LabelList dataKey="valor_acciones" position="right" formatter={(v) => `$${v}`} style={{ fontSize: isMobile ? 10 : 12 }} />
           </Bar>

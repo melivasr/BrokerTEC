@@ -18,7 +18,6 @@ export default async function createAllTables() {
         delistada BIT NOT NULL DEFAULT 0,
         CONSTRAINT FK_Empresa_Mercado
           FOREIGN KEY (id_mercado) REFERENCES Mercado(id)
-          -- NO CASCADE aquí: borrar un mercado debería estar bloqueado si tiene empresas
       );
       CREATE UNIQUE INDEX UQ_Empresa_Ticker
         ON Empresa(id_mercado, ticker);
@@ -63,10 +62,10 @@ export default async function createAllTables() {
         contrasena_hash VARCHAR(255) NOT NULL,
         CONSTRAINT FK_Usuario_Billetera
           FOREIGN KEY (id_billetera) REFERENCES Billetera(id)
-          ON DELETE SET NULL,          -- si llegara a borrarse la billetera, no rompemos Usuario
+          ON DELETE SET NULL,       
         CONSTRAINT FK_Usuario_Portafolio
           FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
-          ON DELETE SET NULL           -- evita bloqueos si se reestructura un portafolio
+          ON DELETE SET NULL          
       );
     `);
 
@@ -77,10 +76,10 @@ export default async function createAllTables() {
         PRIMARY KEY (id_mercado, id_usuario),
         CONSTRAINT FK_MH_Mercado
           FOREIGN KEY (id_mercado) REFERENCES Mercado(id)
-          ON DELETE CASCADE,           -- al borrar un mercado, limpia enlaces
+          ON DELETE CASCADE,       
         CONSTRAINT FK_MH_Usuario
           FOREIGN KEY (id_usuario) REFERENCES Usuario(id)
-          ON DELETE CASCADE            -- al borrar un usuario, limpia enlaces
+          ON DELETE CASCADE            
       );
     `);
 
@@ -93,7 +92,7 @@ export default async function createAllTables() {
         capitalizacion AS (acciones_disponibles * precio),
         CONSTRAINT FK_Inventario_Empresa
           FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
-          ON DELETE CASCADE            -- si alguna vez se elimina Empresa, limpia inventario
+          ON DELETE CASCADE         
       );
     `);
 
@@ -127,7 +126,7 @@ export default async function createAllTables() {
         PRIMARY KEY (fecha, id_empresa),
         CONSTRAINT FK_IH_Empresa
           FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
-          ON DELETE CASCADE            -- histórico puede limpiarse en cascada
+          ON DELETE CASCADE            
       );
     `);
 

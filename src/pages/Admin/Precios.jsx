@@ -5,7 +5,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import Sidebar from '../../components/Sidebar';
 
 const formatFecha = (fecha) => fecha ? new Date(fecha).toLocaleString('es-CR', {
-  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
+  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
 }) : '-';
 
 const formatFechaCorta = (fecha, isMobile) => {
@@ -109,7 +109,7 @@ const GraficoHistorial = ({ empresa, historico, isMobile }) => (
             <Tooltip 
               formatter={(v) => [`$${v.toFixed(2)}`, 'Precio']}
               labelFormatter={(l) => new Date(l).toLocaleString('es-CR')}
-              contentStyle={{ fontSize: isMobile ? 12 : 14 }}
+              contentStyle={{  backgroundColor: "var(--card-bg)",fontSize: isMobile ? 12 : 14 }}
             />
             <Line 
               type="monotone" 
@@ -235,8 +235,8 @@ const Precios = () => {
               </div>
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 8 }}>Fecha y Hora:</label>
-                <input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} max={new Date().toISOString().slice(0, 16)} style={inputStyle} />
-                <small style={{ color: '#666', display: 'block', marginTop: 4 }}>Formato: YYYY-MM-DD HH:MM</small>
+                <input type="datetime-local" value={fecha} onChange={(e) => setFecha(e.target.value)} max={new Date().toISOString().slice(0, 16)} style={inputStyle} step="1" />
+                <small style={{ color: '#666', display: 'block', marginTop: 4 }}>Formato: YYYY-MM-DD HH:MM:SS</small>
               </div>
               <div className="card" style={{ padding: 12, color: '#856404', marginBottom: 16, fontSize: isMobile ? '0.85em' : '0.9em' }}>
                 <strong>Nota:</strong> Acción auditada. Precio se guarda en historial.

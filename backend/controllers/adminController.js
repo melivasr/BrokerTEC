@@ -4,14 +4,6 @@ const GUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a
 const isGuid = (v) => GUID.test(String(v || ''));
 
 // Mercados
-export async function getMercados(_req, res) {
-  try {
-    const rows = await queryDB(`SELECT id, nombre FROM Mercado ORDER BY nombre`);
-    res.json(rows);
-  } catch (e) {
-    res.status(500).json({ message: 'Error al obtener mercados' });
-  }
-}
 
 export async function createMercado(req, res) {
   const { nombre } = req.body;
@@ -45,7 +37,7 @@ export async function deleteMercado(req, res) {
     await queryDB(`DELETE FROM Mercado WHERE id=@id`, { id });
     res.json({ message: 'Mercado eliminado' });
   } catch (e) {
-    res.status(500).json({ message: 'Error al eliminar mercado' });
+    res.status(500).json({ message: 'Debe deslistar las empresas antes de eliminar el mercado' });
   }
 }
 
@@ -133,18 +125,88 @@ export async function updateEmpresa(req, res) {
   }
 }
 
+// Actualizar inventario
+export async function updateInventario(req, res) {
+  const { id } = req.params;
+  const a = Number(req.body.acciones_totales);
+  
+  if (!isGuid(id) || !a || a <= 0) return res.status(400).json({ message: 'Datos inválidos' });
+
+  try {
+    const inv = await queryDB(`SELECT acciones_totales FROM Inventario WHERE id_empresa=@id`, { id });
+    if (!inv.length) return res.status(404).json({ message: 'Inventario no encontrado' });
+
+    await queryDB(
+      `UPDATE Inventario SET acciones_totales=@a, acciones_disponibles=acciones_disponibles+@dif WHERE id_empresa=@id`,
+      { id, a, dif: a - inv[0].acciones_totales }
+    );
+
+    res.json({ message: 'Inventario actualizado' });
+  } catch (e) {
+    res.status(500).json({ message: 'Error' });
+  }
+}
+
 //Deslistar
 export async function delistarEmpresa(req, res) {
   const { id } = req.params;
+  const { justificacion, precio_liquidacion } = req.body;
+  
+  if (!isGuid(id)) return res.status(400).json({ message: 'ID inválido' });
+  if (!justificacion?.trim()) return res.status(400).json({ message: 'Justificación requerida' });
+
   try {
+    const emp = await queryDB(
+      `SELECT e.nombre, e.ticker, i.precio, i.acciones_totales, i.acciones_disponibles
+       FROM Empresa e LEFT JOIN Inventario i ON e.id=i.id_empresa WHERE e.id=@id`, { id }
+    );
+    if (!emp.length) return res.status(404).json({ message: 'Empresa no encontrada' });
+
+    const precio = precio_liquidacion && Number(precio_liquidacion) > 0 ? Number(precio_liquidacion) : emp[0].precio || 0;
+    const activas = emp[0].acciones_totales - emp[0].acciones_disponibles;
+
+    let liquidadas = 0, total = 0;
+    if (activas > 0) {
+      const pos = await queryDB(`
+        SELECT p.id, p.acciones, u.alias, u.id_billetera, u.id_portafolio
+        FROM Portafolio p
+        JOIN Usuario u ON p.id = u.id_portafolio
+        WHERE p.id_empresa = @id AND p.acciones > 0`, { id }
+      );
+
+      for (const p of pos) {
+        const monto = p.acciones * precio;
+        
+        await queryDB(`UPDATE Billetera SET fondos=fondos+@monto WHERE id=@id_billetera`, 
+          { monto, id_billetera: p.id_billetera });
+        
+        await queryDB(
+          `INSERT INTO Transaccion (alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad)
+           VALUES (@alias, @id_portafolio, @id_billetera, @id, 'Venta', @precio, @cantidad)`,
+          { alias: p.alias, id_portafolio: p.id_portafolio, id_billetera: p.id_billetera, id, precio, cantidad: p.acciones }
+        );
+        
+        total += monto;
+        liquidadas++;
+      }
+    }
+
+    // Eliminar TODAS las filas de Portafolio que referencian esta empresa
+    await queryDB(`DELETE FROM Portafolio WHERE id_empresa = @id`, { id });
+    await queryDB(`DELETE FROM Empresa_Favorita WHERE id_empresa = @id`, { id });
     await queryDB(`DELETE FROM Empresa WHERE id=@id`, { id });
-    res.json({ message: 'Empresa delistada' });
+
+    res.json({
+      message: activas > 0 ? 'Empresa delistada con posiciones liquidadas' : 'Empresa delistada',
+      posiciones_liquidadas: liquidadas,
+      total_liquidado: total,
+      justificacion
+    });
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: 'Error al delistar empresa' });
   }
 }
-
 
 // Precios & Carga
 export async function getHistorialPrecio(req, res) {
@@ -480,7 +542,7 @@ export async function getTopWallet(_req, res) {
 
 export async function getTopAcciones(_req, res) {
   try {
-    // valor en acciones = ∑(posición neta * precio actual)
+    // valor en acciones = suma(posición neta * precio actual)
     const traders = await queryDB(
       `SELECT alias FROM Usuario WHERE rol='Trader' AND habilitado=1`
     );
