@@ -234,16 +234,19 @@ const UsuariosCuentas = () => {
   const fetchTops = async () => {
     setError('');
     try {
-      // refresca tops 
       const [usuariosData, wallet, acciones] = await Promise.all([
         getUsuarios(),
         getTopWallet(),
         getTopAcciones(),
       ]);
-      // si hay un usuario seleccionado, refresca sus cuentas
-      if (selectedUsuario?.id) {
-        const cuentasData = await getUsuarioCuentas(selectedUsuario.id);
-      }
+
+      setUsuarios(usuariosData || []);
+      setTopWallet((wallet || []).map(r => ({...r,
+        saldo: Number(r?.saldo ?? 0),
+      })));
+      setTopAcciones((acciones || []).map(r => ({...r,
+        valor_acciones: Number(r?.valor_acciones ?? 0),
+      })));
     } catch (e) {
     }
   };

@@ -1,6 +1,6 @@
 import axios from "axios";
-const BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000';
-const API_URL = `${BASE}/api/auth`; // Ajusta a tu backend
+const BASE = process.env.REACT_APP_API_URL || 'http://192.168.10.111:4000';
+const API_URL = `${BASE}/api/auth`; 
 
 // Registrar usuario
 export async function register({ alias, nombre, direccion, pais_origen, telefono, correo, password, rol }) {
@@ -69,6 +69,20 @@ export async function updateUser(data) {
     const user = getCurrentUser();
     const response = await axios.put(
       `${BASE}/api/auth/${user.id}`,
+      data,
+      { headers: authHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || "Error al actualizar usuario";
+  }
+}
+
+// Actualizar cualquier usuario (admin)
+export async function updateUserById(userId, data) {
+  try {
+    const response = await axios.put(
+      `${BASE}/api/auth/${userId}`,
       data,
       { headers: authHeader() }
     );
