@@ -99,11 +99,11 @@ export async function login(req, res) {
 // Actualizar datos de usuario
 export async function updateUser(req, res) {
   const { id } = req.params;
-  const { alias, nombre, direccion, pais_origen, telefono, correo } = req.body;
+  const { alias, nombre, direccion, pais_origen, telefono, correo, rol } = req.body;
   try {
     await queryDB(
-      `UPDATE Usuario SET alias=@alias, nombre=@nombre, direccion=@direccion, pais_origen=@pais_origen, telefono=@telefono, correo=@correo WHERE id=@id`,
-      { id, alias, nombre, direccion, pais_origen, telefono, correo }
+      `UPDATE Usuario SET alias=@alias, nombre=@nombre, direccion=@direccion, pais_origen=@pais_origen, telefono=@telefono, correo=@correo, rol=@rol WHERE id=@id`,
+      { id, alias, nombre, direccion, pais_origen, telefono, correo, rol }
     );
     res.json({ message: "Datos actualizados correctamente" });
   } catch (error) {

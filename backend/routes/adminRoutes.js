@@ -2,8 +2,7 @@ import express from 'express';
 const router = express.Router();
 import {getMercados, createMercado, updateMercado, deleteMercado, getEmpresasAdmin, createEmpresaAdmin,
     updateEmpresa, delistarEmpresa, getHistorialPrecio, cargarPrecioManual, cargarPreciosBatch,     getUsuarios,
-    getUsuarioCuentas, deshabilitarUsuario, getTopWallet, getTopAcciones, createUsuario,
-    updateUsuarioAdmin, habilitarMercado, deshabilitarMercado} from '../controllers/adminController.js';
+    getUsuarioCuentas, getTopWallet, getTopAcciones, habilitarMercado, deshabilitarMercado, deshabilitarUsuario} from '../controllers/adminController.js';
 import { verifyToken } from '../middlewares/authMiddleware.js';
 
 router.use(verifyToken);
@@ -23,8 +22,6 @@ router.post('/precios/batch', cargarPreciosBatch);
 
 router.get('/usuarios', getUsuarios);
 router.get('/usuarios/:id/cuentas', getUsuarioCuentas);
-router.post('/usuarios', createUsuario);
-router.put('/usuarios/:id', updateUsuarioAdmin);
 router.post('/usuarios/:id/deshabilitar', deshabilitarUsuario);
 
 router.get('/usuarios/top-wallet', getTopWallet);

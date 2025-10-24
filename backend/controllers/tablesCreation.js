@@ -1,4 +1,5 @@
 import { queryDB } from "../config/db.js";
+
 export default async function createAllTables() {
   try {
     await queryDB(`
@@ -14,9 +15,13 @@ export default async function createAllTables() {
         id_mercado UNIQUEIDENTIFIER NOT NULL,
         nombre NVARCHAR(160) NOT NULL,
         ticker CHAR(6) NOT NULL,
-        CONSTRAINT FK_Empresa_Mercado FOREIGN KEY (id_mercado) REFERENCES Mercado(id),
-        CONSTRAINT UQ_Empresa_Ticker UNIQUE (id_mercado, ticker)
+        delistada BIT NOT NULL DEFAULT 0,
+        CONSTRAINT FK_Empresa_Mercado
+          FOREIGN KEY (id_mercado) REFERENCES Mercado(id)
+          -- NO CASCADE aquí: borrar un mercado debería estar bloqueado si tiene empresas
       );
+      CREATE UNIQUE INDEX UQ_Empresa_Ticker
+        ON Empresa(id_mercado, ticker);
     `);
 
     await queryDB(`
@@ -35,7 +40,9 @@ export default async function createAllTables() {
         id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
         id_empresa UNIQUEIDENTIFIER NOT NULL,
         acciones INT NOT NULL CHECK (acciones >= 0),
-        CONSTRAINT FK_Portafolio_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+        CONSTRAINT FK_Portafolio_Empresa
+          FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+          -- NO CASCADE: Portafolio e historial deben sobrevivir; Empresa no se borra
       );
     `);
 
@@ -54,8 +61,12 @@ export default async function createAllTables() {
         correo NVARCHAR(120) NOT NULL UNIQUE,
         rol NVARCHAR(20) NOT NULL CHECK (rol IN ('Admin','Trader','Analista')),
         contrasena_hash VARCHAR(255) NOT NULL,
-        CONSTRAINT FK_Usuario_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id),
-        CONSTRAINT FK_Usuario_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
+        CONSTRAINT FK_Usuario_Billetera
+          FOREIGN KEY (id_billetera) REFERENCES Billetera(id)
+          ON DELETE SET NULL,          -- si llegara a borrarse la billetera, no rompemos Usuario
+        CONSTRAINT FK_Usuario_Portafolio
+          FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
+          ON DELETE SET NULL           -- evita bloqueos si se reestructura un portafolio
       );
     `);
 
@@ -64,8 +75,12 @@ export default async function createAllTables() {
         id_mercado UNIQUEIDENTIFIER NOT NULL,
         id_usuario UNIQUEIDENTIFIER NOT NULL,
         PRIMARY KEY (id_mercado, id_usuario),
-        CONSTRAINT FK_MH_Mercado FOREIGN KEY (id_mercado) REFERENCES Mercado(id),
-        CONSTRAINT FK_MH_Usuario FOREIGN KEY (id_usuario) REFERENCES Usuario(id)
+        CONSTRAINT FK_MH_Mercado
+          FOREIGN KEY (id_mercado) REFERENCES Mercado(id)
+          ON DELETE CASCADE,           -- al borrar un mercado, limpia enlaces
+        CONSTRAINT FK_MH_Usuario
+          FOREIGN KEY (id_usuario) REFERENCES Usuario(id)
+          ON DELETE CASCADE            -- al borrar un usuario, limpia enlaces
       );
     `);
 
@@ -76,7 +91,9 @@ export default async function createAllTables() {
         acciones_disponibles INT NOT NULL CHECK (acciones_disponibles >= 0),
         precio DECIMAL(19,4) NOT NULL CHECK (precio > 0),
         capitalizacion AS (acciones_disponibles * precio),
-        CONSTRAINT FK_Inventario_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+        CONSTRAINT FK_Inventario_Empresa
+          FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+          ON DELETE CASCADE            -- si alguna vez se elimina Empresa, limpia inventario
       );
     `);
 
@@ -95,6 +112,7 @@ export default async function createAllTables() {
         CONSTRAINT FK_Transaccion_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id),
         CONSTRAINT FK_Transaccion_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id),
         CONSTRAINT FK_Transaccion_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+        -- IMPORTANTE: sin CASCADE para preservar auditoría/historial
       );
     `);
 
@@ -107,7 +125,9 @@ export default async function createAllTables() {
         precio DECIMAL(19,4) NOT NULL,
         capitalizacion AS (acciones_disponibles * precio),
         PRIMARY KEY (fecha, id_empresa),
-        CONSTRAINT FK_IH_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+        CONSTRAINT FK_IH_Empresa
+          FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+          ON DELETE CASCADE            -- histórico puede limpiarse en cascada
       );
     `);
 
@@ -122,7 +142,9 @@ export default async function createAllTables() {
         bloqueo_hasta DATETIME2(3) NULL,
         recarga_monto DECIMAL(19,4) NULL,
         PRIMARY KEY (fecha, id_billetera),
-        CONSTRAINT FK_BH_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id)
+        CONSTRAINT FK_BH_Billetera
+          FOREIGN KEY (id_billetera) REFERENCES Billetera(id)
+          ON DELETE CASCADE
       );
     `);
 
@@ -133,8 +155,12 @@ export default async function createAllTables() {
         id_empresa UNIQUEIDENTIFIER NOT NULL,
         acciones INT NOT NULL CHECK (acciones >= 0),
         PRIMARY KEY (fecha, id_portafolio, id_empresa),
-        CONSTRAINT FK_PH_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id),
-        CONSTRAINT FK_PH_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+        CONSTRAINT FK_PH_Portafolio
+          FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
+          ON DELETE CASCADE,           -- si se elimina un portafolio, limpiar su historial
+        CONSTRAINT FK_PH_Empresa
+          FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+          ON DELETE CASCADE            -- si se eliminara Empresa, limpiar rastro histórico
       );
     `);
 
@@ -143,12 +169,16 @@ export default async function createAllTables() {
         id_empresa UNIQUEIDENTIFIER NOT NULL,
         id_usuario UNIQUEIDENTIFIER NOT NULL,
         PRIMARY KEY (id_empresa, id_usuario),
-        CONSTRAINT FK_EF_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id),
-        CONSTRAINT FK_EF_Usuario FOREIGN KEY (id_usuario) REFERENCES Usuario(id)
+        CONSTRAINT FK_EF_Empresa
+          FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+          ON DELETE CASCADE,
+        CONSTRAINT FK_EF_Usuario
+          FOREIGN KEY (id_usuario) REFERENCES Usuario(id)
+          ON DELETE CASCADE
       );
     `);
 
-    console.log('Tablas creadas correctamente (modelo schema.sql)');
+    console.log('Tablas creadas correctamente (modelo schema.sql, con cascadas seguras)');
   } catch (err) {
     console.error('Error creando tablas:', err);
     throw err;

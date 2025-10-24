@@ -82,16 +82,6 @@ export async function getUsuarioCuentas(id) {
     return res.data;
 }
 
-export async function createUsuario(data) {
-    const res = await axios.post('/api/admin/usuarios', data, { headers: authHeader() });
-    return res.data;
-}
-
-export async function updateUsuarioAdmin(id, data) {
-    const res = await axios.put(`/api/admin/usuarios/${id}`, data, { headers: authHeader() });
-    return res.data;
-}
-
 export async function deshabilitarUsuario(id, justificacion) {
     const res = await axios.post(
         `/api/admin/usuarios/${id}/deshabilitar`,

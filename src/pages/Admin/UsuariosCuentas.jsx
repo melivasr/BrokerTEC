@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  getUsuarios, getUsuarioCuentas, deshabilitarUsuario, getTopWallet, getTopAcciones,
-  createUsuario, updateUsuarioAdmin, getMercados, habilitarMercado, deshabilitarMercado
+  getUsuarios, getUsuarioCuentas, deshabilitarUsuario, getTopWallet, getTopAcciones, getMercados, habilitarMercado, deshabilitarMercado
 } from '../../services/adminService';
+import { 
+  register, updateUserById
+} from '../../services/authService';
 import ErrorMessage from '../../components/ErrorMessage';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList, CartesianGrid } from 'recharts';
 import Sidebar from '../../components/Sidebar';
@@ -191,9 +193,28 @@ const UsuariosCuentas = () => {
   const [topWallet, setTopWallet] = useState([]);
   const [topAcciones, setTopAcciones] = useState([]);
 
-  // Formularios
-  const [formData, setFormData] = useState({alias: '', nombre: '', correo: '', password: '', rol: 'Trader', categoria: 'Junior'});
-  const [editData, setEditData] = useState({nombre: '', correo: '', rol: '', categoria: '', limite_diario: ''});
+  // Formularios - TODOS los campos de register
+  const [formData, setFormData] = useState({
+    alias: '',
+    nombre: '',
+    direccion: '',
+    pais_origen: '',
+    telefono: '',
+    correo: '',
+    password: '',
+    rol: 'Trader'
+  });
+
+  // Formulario editar - LOS MISMOS CAMPOS que crear (sin password)
+  const [editData, setEditData] = useState({
+    alias: '',
+    nombre: '',
+    direccion: '',
+    pais_origen: '',
+    telefono: '',
+    correo: '',
+    rol: 'Trader'
+  });
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -241,28 +262,59 @@ const UsuariosCuentas = () => {
   };
 
   const handleCreateUsuario = async () => {
-    setError(''); setSuccess('');
-    if (!formData.alias || !formData.nombre || !formData.correo || !formData.password) {
-      setError('Todos los campos requeridos'); return;
+    setError(''); 
+    setSuccess('');
+    
+    // Validar campos requeridos
+    if (!formData.alias || !formData.nombre || !formData.direccion || 
+        !formData.pais_origen || !formData.telefono || !formData.correo || !formData.password) {
+      setError('Todos los campos son requeridos');
+      return;
     }
+    
     try {
-      await createUsuario(formData);
-      setSuccess('Usuario creado');
+      await register(formData);
+      setSuccess('Usuario creado correctamente');
       setShowCreateModal(false);
-      setFormData({alias: '', nombre: '', correo: '', password: '', rol: 'Trader', categoria: 'Junior'});
+      setFormData({
+        alias: '',
+        nombre: '',
+        direccion: '',
+        pais_origen: '',
+        telefono: '',
+        correo: '',
+        password: '',
+        rol: 'Trader'
+      });
       fetchUsuarios();
       fetchTops();
-    } catch (err) { setError(err.response?.data?.message || 'Error'); }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al crear usuario');
+    }
   };
 
   const handleEditUsuario = async () => {
-    setError(''); setSuccess('');
+    setError(''); 
+    setSuccess('');
+    
+    // Validar campos requeridos
+    if (!editData.alias || !editData.nombre || !editData.direccion || 
+        !editData.pais_origen || !editData.telefono || !editData.correo) {
+      setError('Todos los campos son requeridos');
+      return;
+    }
+    
     try {
-      await updateUsuarioAdmin(selectedUsuario.id, editData);
-      setSuccess('Usuario actualizado');
+      await updateUserById(selectedUsuario.id, editData);
+      setSuccess('Usuario actualizado correctamente');
       setShowEditModal(false);
       fetchUsuarios();
-    } catch (err) { setError(err.response?.data?.message || 'Error'); }
+      if (cuentas) {
+        handleUsuarioClick(selectedUsuario);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al actualizar usuario');
+    }
   };
 
   const handleHabilitarMercado = async (idMercado) => {
@@ -312,7 +364,7 @@ const UsuariosCuentas = () => {
         </div>
         
         {error && <ErrorMessage message={error} />}
-        {success && <div className="card" style={{ padding: 12, color: '#155724', marginBottom: 16 }}>{success}</div>}
+        {success && <div className="card" style={{ padding: 12, background: '#d4edda', color: '#155724', marginBottom: 16 }}>{success}</div>}
 
         <UsuariosTable 
           usuarios={usuarios} 
@@ -320,7 +372,15 @@ const UsuariosCuentas = () => {
           onVerCuentas={handleUsuarioClick}
           onEditar={(u) => { 
             setSelectedUsuario(u); 
-            setEditData({nombre: u.nombre, correo: u.correo, rol: u.rol, categoria: '', limite_diario: ''}); 
+            setEditData({
+              alias: u.alias || '',
+              nombre: u.nombre || '',
+              direccion: u.direccion || '',
+              pais_origen: u.pais_origen || '',
+              telefono: u.telefono || '',
+              correo: u.correo || '',
+              rol: u.rol || 'Trader'
+            }); 
             setShowEditModal(true); 
           }}
           onDeshabilitar={(u) => { setSelectedUsuario(u); setShowModal(true); }}
@@ -339,47 +399,129 @@ const UsuariosCuentas = () => {
 
         {/* MODAL CREAR */}
         {showCreateModal && (
-          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
-            <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600, maxHeight: isMobile ? 'calc(100vh - 24px)' : '90vh', overflow: 'auto' }}>
+          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24, overflowY: 'auto' }}>
+            <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600, maxHeight: isMobile ? 'calc(100vh - 24px)' : '90vh', overflow: 'auto', margin: 'auto' }}>
               <h3>Crear Usuario</h3>
+              
               <div style={{ marginBottom: 16 }}>
-                <label>Alias:</label>
-                <input type="text" value={formData.alias} onChange={(e) => setFormData({ ...formData, alias: e.target.value })} placeholder="juanp" style={inputStyle} />
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Alias *</label>
+                <input 
+                  type="text" 
+                  value={formData.alias} 
+                  onChange={(e) => setFormData({ ...formData, alias: e.target.value })} 
+                  placeholder="juanp" 
+                  style={inputStyle} 
+                />
               </div>
+
               <div style={{ marginBottom: 16 }}>
-                <label>Nombre:</label>
-                <input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} placeholder="Juan Pérez" style={inputStyle} />
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Nombre Completo *</label>
+                <input 
+                  type="text" 
+                  value={formData.nombre} 
+                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} 
+                  placeholder="Juan Pérez" 
+                  style={inputStyle} 
+                />
               </div>
+
               <div style={{ marginBottom: 16 }}>
-                <label>Correo:</label>
-                <input type="email" value={formData.correo} onChange={(e) => setFormData({ ...formData, correo: e.target.value })} placeholder="juan@example.com" style={inputStyle} />
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Dirección *</label>
+                <input 
+                  type="text" 
+                  value={formData.direccion} 
+                  onChange={(e) => setFormData({ ...formData, direccion: e.target.value })} 
+                  placeholder="Calle Principal 123" 
+                  style={inputStyle} 
+                />
               </div>
+
               <div style={{ marginBottom: 16 }}>
-                <label>Contraseña:</label>
-                <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} placeholder="Mínimo 6" style={inputStyle} />
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>País de Origen *</label>
+                <input 
+                  type="text" 
+                  value={formData.pais_origen} 
+                  onChange={(e) => setFormData({ ...formData, pais_origen: e.target.value })} 
+                  placeholder="Costa Rica" 
+                  style={inputStyle} 
+                />
               </div>
+
               <div style={{ marginBottom: 16 }}>
-                <label>Rol:</label>
-                <select value={formData.rol} onChange={(e) => setFormData({ ...formData, rol: e.target.value })} style={inputStyle}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Teléfono *</label>
+                <input 
+                  type="tel" 
+                  value={formData.telefono} 
+                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} 
+                  placeholder="+506 1234-5678" 
+                  style={inputStyle} 
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Correo Electrónico *</label>
+                <input 
+                  type="email" 
+                  value={formData.correo} 
+                  onChange={(e) => setFormData({ ...formData, correo: e.target.value })} 
+                  placeholder="juan@example.com" 
+                  style={inputStyle} 
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Contraseña *</label>
+                <input 
+                  type="password" 
+                  value={formData.password} 
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
+                  placeholder="Mínimo 6 caracteres" 
+                  style={inputStyle} 
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Rol *</label>
+                <select 
+                  value={formData.rol} 
+                  onChange={(e) => setFormData({ ...formData, rol: e.target.value })} 
+                  style={inputStyle}
+                >
                   <option value="Trader">Trader</option>
                   <option value="Analista">Analista</option>
                   <option value="Admin">Admin</option>
                 </select>
+                <small style={{ color: '#666', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                  La categoría de billetera se asigna automáticamente: Trader=Junior, Analista=Mid, Admin=Senior
+                </small>
               </div>
-              <div style={{ marginBottom: 16 }}>
-                <label>Categoría:</label>
-                <select value={formData.categoria} onChange={(e) => setFormData({ ...formData, categoria: e.target.value })} style={inputStyle}>
-                  <option value="Junior">Junior ($1000 - Límite: $500)</option>
-                  <option value="Mid">Mid ($5000 - Límite: $2000)</option>
-                  <option value="Senior">Senior ($20000 - Límite: $10000)</option>
-                </select>
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row' }}>
-                <button onClick={() => { setShowCreateModal(false); setFormData({alias: '', nombre: '', correo: '', password: '', rol: 'Trader', categoria: 'Junior'}); }} className="btn-block">
+
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row', marginTop: 24 }}>
+                <button 
+                  onClick={() => { 
+                    setShowCreateModal(false); 
+                    setFormData({
+                      alias: '',
+                      nombre: '',
+                      direccion: '',
+                      pais_origen: '',
+                      telefono: '',
+                      correo: '',
+                      password: '',
+                      rol: 'Trader'
+                    }); 
+                  }} 
+                  className="btn-block"
+                  style={{ padding: '8px 16px' }}
+                >
                   Cancelar
                 </button>
-                <button onClick={handleCreateUsuario} style={{ background: '#28a745', color: 'white' }} className="btn-block">
-                  Crear
+                <button 
+                  onClick={handleCreateUsuario} 
+                  style={{ background: '#28a745', color: 'white', padding: '8px 16px' }} 
+                  className="btn-block"
+                >
+                  Crear Usuario
                 </button>
               </div>
             </div>
@@ -388,41 +530,98 @@ const UsuariosCuentas = () => {
 
         {/* MODAL EDITAR */}
         {showEditModal && (
-          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
-            <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600 }}>
-              <h3>Editar: {selectedUsuario?.alias}</h3>
+          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24, overflowY: 'auto' }}>
+            <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600, maxHeight: isMobile ? 'calc(100vh - 24px)' : '90vh', overflow: 'auto', margin: 'auto' }}>
+              <h3>Editar Usuario: {selectedUsuario?.alias}</h3>
+              
               <div style={{ marginBottom: 16 }}>
-                <label>Nombre:</label>
-                <input type="text" value={editData.nombre} onChange={(e) => setEditData({ ...editData, nombre: e.target.value })} style={inputStyle} />
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Alias *</label>
+                <input 
+                  type="text" 
+                  value={editData.alias} 
+                  onChange={(e) => setEditData({ ...editData, alias: e.target.value })} 
+                  style={inputStyle} 
+                />
               </div>
+
               <div style={{ marginBottom: 16 }}>
-                <label>Correo:</label>
-                <input type="email" value={editData.correo} onChange={(e) => setEditData({ ...editData, correo: e.target.value })} style={inputStyle} />
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Nombre Completo *</label>
+                <input 
+                  type="text" 
+                  value={editData.nombre} 
+                  onChange={(e) => setEditData({ ...editData, nombre: e.target.value })} 
+                  style={inputStyle} 
+                />
               </div>
+
               <div style={{ marginBottom: 16 }}>
-                <label>Rol:</label>
-                <select value={editData.rol} onChange={(e) => setEditData({ ...editData, rol: e.target.value })} style={inputStyle}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Dirección *</label>
+                <input 
+                  type="text" 
+                  value={editData.direccion} 
+                  onChange={(e) => setEditData({ ...editData, direccion: e.target.value })} 
+                  style={inputStyle} 
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>País de Origen *</label>
+                <input 
+                  type="text" 
+                  value={editData.pais_origen} 
+                  onChange={(e) => setEditData({ ...editData, pais_origen: e.target.value })} 
+                  style={inputStyle} 
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Teléfono *</label>
+                <input 
+                  type="tel" 
+                  value={editData.telefono} 
+                  onChange={(e) => setEditData({ ...editData, telefono: e.target.value })} 
+                  style={inputStyle} 
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Correo Electrónico *</label>
+                <input 
+                  type="email" 
+                  value={editData.correo} 
+                  onChange={(e) => setEditData({ ...editData, correo: e.target.value })} 
+                  style={inputStyle} 
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Rol *</label>
+                <select 
+                  value={editData.rol} 
+                  onChange={(e) => setEditData({ ...editData, rol: e.target.value })} 
+                  style={inputStyle}
+                >
                   <option value="Trader">Trader</option>
                   <option value="Analista">Analista</option>
                   <option value="Admin">Admin</option>
                 </select>
               </div>
-              <div style={{ marginBottom: 16 }}>
-                <label>Categoría (opcional):</label>
-                <select value={editData.categoria} onChange={(e) => setEditData({ ...editData, categoria: e.target.value })} style={inputStyle}>
-                  <option value="">No cambiar</option>
-                  <option value="Junior">Junior</option>
-                  <option value="Mid">Mid</option>
-                  <option value="Senior">Senior</option>
-                </select>
-              </div>
-              <div style={{ marginBottom: 16 }}>
-                <label>Límite Diario (opcional):</label>
-                <input type="number" value={editData.limite_diario} onChange={(e) => setEditData({ ...editData, limite_diario: e.target.value })} placeholder="Vacío = no cambiar" step="0.01" style={inputStyle} />
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row' }}>
-                <button onClick={() => setShowEditModal(false)} className="btn-block">Cancelar</button>
-                <button onClick={handleEditUsuario} style={{ background: '#007bff', color: 'white' }} className="btn-block">Guardar</button>
+
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row', marginTop: 24 }}>
+                <button 
+                  onClick={() => setShowEditModal(false)} 
+                  className="btn-block"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleEditUsuario} 
+                  style={{ background: '#007bff', color: 'white', padding: '8px 16px' }} 
+                  className="btn-block"
+                >
+                  Guardar Cambios
+                </button>
               </div>
             </div>
           </div>
@@ -430,7 +629,7 @@ const UsuariosCuentas = () => {
 
         {/* MODAL MERCADOS */}
         {showMercadosModal && selectedUsuario && cuentas && (
-          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
+          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
             <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600 }}>
               <h3>Gestionar Mercados: {selectedUsuario.alias}</h3>
               <div style={{ marginBottom: 16 }}>
@@ -462,11 +661,11 @@ const UsuariosCuentas = () => {
 
         {/* MODAL DESHABILITAR */}
         {showModal && (
-          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
+          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
             <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600 }}>
               <h3 style={{ color: '#dc3545' }}>Deshabilitar Usuario</h3>
               <p>¿Seguro de deshabilitar <strong>{selectedUsuario?.alias}</strong>?</p>
-              <div className="card" style={{ padding: 12, color: '#856404', marginBottom: 16, fontSize: '0.9em' }}>
+              <div className="card" style={{ padding: 12, background: '#fff3cd', color: '#856404', marginBottom: 16, fontSize: '0.9em' }}>
                 ⚠️ Esta acción:
                 <ul style={{ margin: '8px 0', paddingLeft: 20 }}>
                   <li>Liquidará todas las posiciones al precio actual</li>
@@ -476,13 +675,29 @@ const UsuariosCuentas = () => {
                 </ul>
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label>Justificación:</label>
-                <textarea value={justificacion} onChange={(e) => setJustificacion(e.target.value)} placeholder="Motivo..." rows={4} style={inputStyle} />
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Justificación *</label>
+                <textarea 
+                  value={justificacion} 
+                  onChange={(e) => setJustificacion(e.target.value)} 
+                  placeholder="Explique el motivo de deshabilitar este usuario..." 
+                  rows={4} 
+                  style={inputStyle} 
+                />
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row' }}>
-                <button onClick={() => { setShowModal(false); setJustificacion(''); }} className="btn-block">Cancelar</button>
-                <button onClick={handleDeshabilitar} style={{ background: '#dc3545', color: 'white' }} className="btn-block">
-                  Confirmar
+                <button 
+                  onClick={() => { setShowModal(false); setJustificacion(''); }} 
+                  className="btn-block"
+                  style={{ padding: '8px 16px' }}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleDeshabilitar} 
+                  style={{ background: '#dc3545', color: 'white', padding: '8px 16px' }} 
+                  className="btn-block"
+                >
+                  Confirmar Deshabilitación
                 </button>
               </div>
             </div>
