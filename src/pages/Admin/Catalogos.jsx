@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import {getMercados, createMercado, updateMercado, deleteMercado,
-  getEmpresasAdmin, createEmpresaAdmin, updateEmpresa, delistarEmpresa, getHistorialPrecio
+import { createMercado, updateMercado, deleteMercado,
+  getEmpresasAdmin, createEmpresaAdmin, updateEmpresa, updateInventario, delistarEmpresa, getHistorialPrecio
 } from '../../services/adminService';
+import {getMercados} from '../../services/analistaService';
 import ErrorMessage from '../../components/ErrorMessage';
 import Sidebar from '../../components/Sidebar';
 
@@ -239,9 +240,23 @@ const Catalogos = () => {
       setError('Faltan datos'); return; 
     }
     try {
-      editingEmpresa 
-        ? await updateEmpresa(editingEmpresa.id, {nombre: empresaForm.nombre, ticker: empresaForm.ticker, id_mercado: empresaForm.id_mercado})
-        : await createEmpresaAdmin({...empresaForm, precio: empresaForm.precio ? parseFloat(empresaForm.precio) : null, acciones_totales: empresaForm.acciones_totales ? parseInt(empresaForm.acciones_totales) : null});
+      if (editingEmpresa) {
+        await updateEmpresa(editingEmpresa.id, {
+          nombre: empresaForm.nombre, 
+          ticker: empresaForm.ticker, 
+          id_mercado: empresaForm.id_mercado
+        });
+        // Si cambió el stock, actualizar inventario
+        if (empresaForm.acciones_totales && parseInt(empresaForm.acciones_totales) !== editingEmpresa.acciones_totales) {
+          await updateInventario(editingEmpresa.id, parseInt(empresaForm.acciones_totales));
+        }
+      } else {
+        await createEmpresaAdmin({
+          ...empresaForm, 
+          precio: empresaForm.precio ? parseFloat(empresaForm.precio) : null, 
+          acciones_totales: empresaForm.acciones_totales ? parseInt(empresaForm.acciones_totales) : null
+        });
+      }
       setSuccess(`Empresa ${editingEmpresa ? 'actualizada' : 'creada'}`);
       setShowEmpresaModal(false);
       fetchData();
@@ -269,7 +284,7 @@ const Catalogos = () => {
         <h2>Catálogos - Mercados y Empresas</h2>
         
         {error && <ErrorMessage message={error} />}
-        {success && <div className="card" style={{ padding: 12, color: '#155724', marginBottom: 16 }}>{success}</div>}
+        {success && <div className="card" style={{ padding: 12, background: '#d4edda', color: '#155724', marginBottom: 16 }}>{success}</div>}
 
         {/* MERCADOS */}
         <div style={{ marginBottom: 48 }}>
@@ -300,7 +315,7 @@ const Catalogos = () => {
 
         {/* MODAL MERCADO */}
         {showMercadoModal && (
-          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
+          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
             <div className="card" style={{ minWidth: isMobile ? '100%' : 400, maxWidth: isMobile ? '100%' : 600 }}>
               <h3>{editingMercado ? 'Editar' : 'Crear'} Mercado</h3>
               <div style={{ marginBottom: 16 }}>
@@ -317,37 +332,50 @@ const Catalogos = () => {
 
         {/* MODAL EMPRESA */}
         {showEmpresaModal && (
-          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
+          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
             <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600, maxHeight: isMobile ? 'calc(100vh - 24px)' : '90vh', overflow: 'auto' }}>
               <h3>{editingEmpresa ? 'Editar' : 'Crear'} Empresa</h3>
+              
               <div style={{ marginBottom: 16 }}>
-                <label>Nombre:</label>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Nombre:</label>
                 <input type="text" value={empresaForm.nombre} onChange={(e) => setEmpresaForm({ ...empresaForm, nombre: e.target.value })} placeholder="Apple Inc." style={inputStyle} />
               </div>
+              
               <div style={{ marginBottom: 16 }}>
-                <label>Ticker:</label>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Ticker:</label>
                 <input type="text" value={empresaForm.ticker} onChange={(e) => setEmpresaForm({ ...empresaForm, ticker: e.target.value.toUpperCase() })} placeholder="AAPL" maxLength={6} style={inputStyle} />
               </div>
+              
               <div style={{ marginBottom: 16 }}>
-                <label>Mercado:</label>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Mercado:</label>
                 <select value={empresaForm.id_mercado} onChange={(e) => setEmpresaForm({ ...empresaForm, id_mercado: e.target.value })} style={inputStyle}>
                   <option value="">Seleccione</option>
                   {mercados.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
                 </select>
               </div>
-              {!editingEmpresa && (
+              
+              {!editingEmpresa ? (
                 <>
                   <div style={{ marginBottom: 16 }}>
-                    <label>Precio Inicial:</label>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Precio Inicial:</label>
                     <input type="number" value={empresaForm.precio} onChange={(e) => setEmpresaForm({ ...empresaForm, precio: e.target.value })} placeholder="150.00" step="0.01" style={inputStyle} />
                   </div>
                   <div style={{ marginBottom: 16 }}>
-                    <label>Acciones:</label>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Acciones Totales:</label>
                     <input type="number" value={empresaForm.acciones_totales} onChange={(e) => setEmpresaForm({ ...empresaForm, acciones_totales: e.target.value })} placeholder="1000" style={inputStyle} />
                   </div>
                 </>
+              ) : (
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Acciones Totales:</label>
+                  <input type="number" value={empresaForm.acciones_totales} onChange={(e) => setEmpresaForm({ ...empresaForm, acciones_totales: e.target.value })} placeholder="1000" style={inputStyle} />
+                  <small style={{ color: '#666', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    Actual: {editingEmpresa?.acciones_totales?.toLocaleString() || 0}
+                  </small>
+                </div>
               )}
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row' }}>
+              
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row', marginTop: 24 }}>
                 <button onClick={() => setShowEmpresaModal(false)} className="btn-block">Cancelar</button>
                 <button onClick={handleSaveEmpresa} style={{ background: '#007bff', color: 'white' }} className="btn-block">Guardar</button>
               </div>
@@ -357,25 +385,25 @@ const Catalogos = () => {
 
         {/* MODAL DELISTAR */}
         {showDelistModal && (
-          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
+          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
             <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600 }}>
               <h3 style={{ color: '#dc3545' }}>Delistar Empresa</h3>
               <p>¿Seguro de delistar <strong>{empresaToDelist?.nombre}</strong>?
                 {empresaToDelist?.acciones_disponibles < empresaToDelist?.acciones_totales && (
-                  <span style={{ color: '#dc3545', display: 'block', marginTop: 8 }}> Tiene posiciones activas</span>
+                  <span style={{ color: '#dc3545', display: 'block', marginTop: 8 }}> Tiene posiciones activas que serán liquidadas</span>
                 )}
               </p>
               <div style={{ marginBottom: 16 }}>
-                <label>Justificación:</label>
-                <textarea value={justificacion} onChange={(e) => setJustificacion(e.target.value)} placeholder="Motivo..." rows={4} style={inputStyle} />
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Justificación *</label>
+                <textarea value={justificacion} onChange={(e) => setJustificacion(e.target.value)} placeholder="Explique el motivo del delist..." rows={4} style={inputStyle} />
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label>Precio Liquidación (opcional, default: ${empresaToDelist?.precio_actual?.toFixed(2)}):</label>
-                <input type="number" value={precioLiquidacion} onChange={(e) => setPrecioLiquidacion(e.target.value)} step="0.01" style={inputStyle} />
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Precio Liquidación (opcional)</label>
+                <input type="number" value={precioLiquidacion} onChange={(e) => setPrecioLiquidacion(e.target.value)} step="0.1" style={inputStyle} />
               </div>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row' }}>
                 <button onClick={() => { setShowDelistModal(false); setJustificacion(''); setPrecioLiquidacion(''); }} className="btn-block">Cancelar</button>
-                <button onClick={handleDelistEmpresa} style={{ background: '#dc3545', color: 'white' }} className="btn-block">Confirmar</button>
+                <button onClick={handleDelistEmpresa} style={{ background: '#dc3545', color: 'white' }} className="btn-block">Confirmar Delist</button>
               </div>
             </div>
           </div>
@@ -383,7 +411,7 @@ const Catalogos = () => {
 
         {/* MODAL PRECIOS */}
         {showPreciosModal && selectedEmpresaPrecios && (
-          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.2)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
+          <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
             <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600, maxHeight: '90vh', overflow: 'auto' }}>
               <h3>Precios: {selectedEmpresaPrecios.nombre}</h3>
               <p>Actual: <strong>${selectedEmpresaPrecios.precio_actual?.toFixed(2)}</strong></p>

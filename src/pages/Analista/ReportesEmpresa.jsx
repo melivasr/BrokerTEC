@@ -206,7 +206,7 @@ const GraficoHistorico = ({ data, isMobile }) => {
         <Tooltip 
           formatter={(v) => [`$${v.toFixed(2)}`, 'Precio']}
           labelFormatter={(l) => new Date(l).toLocaleDateString('es-CR')}
-          contentStyle={{ fontSize: isMobile ? 12 : 14 }}
+          contentStyle={{  backgroundColor: "var(--card-bg)",fontSize: isMobile ? 12 : 14 }}
         />
         <Line 
           type="monotone" 
@@ -246,7 +246,7 @@ export default function ReportesEmpresa() {
   useEffect(() => {
     async function cargarInicial() {
       try {
-        const merc = await analistaService.getMercadosAnalista();
+        const merc = await analistaService.getMercados();
         setMercados(merc);
         
         const emp = await analistaService.getEmpresasPorMercado();

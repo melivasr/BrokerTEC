@@ -25,12 +25,12 @@ const EstadisticasView = ({ data, nivel, isMobile }) => (
             <div>
               <strong style={{ fontSize: 13, color: '#666' }}>Traders:</strong>
               <div style={{ fontSize: 16 }}>{r.acciones_traders.toLocaleString()}</div>
-              <div style={{ fontSize: 14, color: '#3498db', fontWeight: 'bold' }}>{r.porcentaje_traders}%</div>
+              <div style={{ fontSize: 14, color: '#3498db', fontWeight: 'bold' }}>{r.porcentaje_traders.toFixed(2)}%</div>
             </div>
             <div>
               <strong style={{ fontSize: 13, color: '#666' }}>Admin:</strong>
               <div style={{ fontSize: 16 }}>{r.acciones_administracion.toLocaleString()}</div>
-              <div style={{ fontSize: 14, color: '#e74c3c', fontWeight: 'bold' }}>{r.porcentaje_administracion}%</div>
+              <div style={{ fontSize: 14, color: '#e74c3c', fontWeight: 'bold' }}>{r.porcentaje_administracion.toFixed(2)}%</div>
             </div>
           </div>
           <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid #eee' }}>
@@ -64,8 +64,8 @@ const EstadisticasView = ({ data, nivel, isMobile }) => (
             <td style={{ padding: 8, textAlign: 'right' }}>{r.acciones_traders.toLocaleString()}</td>
             <td style={{ padding: 8, textAlign: 'right' }}>{r.acciones_administracion.toLocaleString()}</td>
             <td style={{ padding: 8, textAlign: 'right' }}>{r.total_acciones.toLocaleString()}</td>
-            <td style={{ padding: 8, textAlign: 'center', fontWeight: 'bold', color: '#3498db' }}>{r.porcentaje_traders}%</td>
-            <td style={{ padding: 8, textAlign: 'center', fontWeight: 'bold', color: '#e74c3c' }}>{r.porcentaje_administracion}%</td>
+            <td style={{ padding: 8, textAlign: 'center', fontWeight: 'bold', color: '#3498db' }}>{r.porcentaje_traders.toFixed(2)}%</td>
+            <td style={{ padding: 8, textAlign: 'center', fontWeight: 'bold', color: '#e74c3c' }}>{r.porcentaje_administracion.toFixed(2)}%</td>
           </tr>
         ))}
       </tbody>
@@ -100,7 +100,7 @@ const EstadisticasChart = ({ data, nivel, isMobile }) => (
       />
       <Tooltip 
         formatter={(v) => `${v}%`}
-        contentStyle={{ fontSize: isMobile ? 12 : 14 }}
+        contentStyle={{  backgroundColor: "var(--card-bg)",fontSize: isMobile ? 12 : 14 }}
       />
       <Legend wrapperStyle={{ fontSize: isMobile ? 12 : 14 }} />
       <Bar dataKey="porcentaje_traders" fill="#3498db" name="% Traders" />
@@ -127,7 +127,7 @@ export default function Estadisticas() {
   useEffect(() => {
     async function cargarMercados() {
       try {
-        setMercados(await analistaService.getMercadosAnalista());
+        setMercados(await analistaService.getMercados());
       } catch (err) {
         console.error('Error cargando mercados:', err);
       }
