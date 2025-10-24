@@ -191,7 +191,7 @@ export async function getEmpresasPorMercado(req, res) {
 // Historial de transacciones por alias
 export async function getHistorialUsuario(req, res) {
   const { alias } = req.params;
-  const { fecha_inicio, fecha_fin, id_empresa, tipo, ordenar } = req.query;
+  const { fecha_inicio, fecha_fin, tipo, ordenar } = req.query;
 
   try {
     const exists = await queryDB(`
@@ -212,7 +212,6 @@ export async function getHistorialUsuario(req, res) {
 
     if (fecha_inicio) { sql += ` AND t.fecha >= @fecha_inicio`; params.fecha_inicio = fecha_inicio; }
     if (fecha_fin)    { sql += ` AND t.fecha <= @fecha_fin`;    params.fecha_fin    = fecha_fin;    }
-    if (id_empresa)   { sql += ` AND t.id_empresa = @id_empresa`; params.id_empresa = id_empresa;   }
     if (tipo === "Compra" || tipo === "Venta") { sql += ` AND t.tipo = @tipo`; params.tipo = tipo; }
 
     if (ordenar === "empresa") {

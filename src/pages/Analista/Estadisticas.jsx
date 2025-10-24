@@ -100,7 +100,7 @@ const EstadisticasChart = ({ data, nivel, isMobile }) => (
       />
       <Tooltip 
         formatter={(v) => `${Number(v ?? 0).toFixed(2)}%`}
-        contentStyle={{ fontSize: isMobile ? 12 : 14 }}
+        contentStyle={{  backgroundColor: "var(--card-bg)",fontSize: isMobile ? 12 : 14 }}
       />
       <Legend wrapperStyle={{ fontSize: isMobile ? 12 : 14 }} />
       <Bar dataKey="porcentaje_traders" fill="#3498db" name="% Traders" />
@@ -127,7 +127,7 @@ export default function Estadisticas() {
   useEffect(() => {
     async function cargarMercados() {
       try {
-        setMercados(await analistaService.getMercadosAnalista());
+        setMercados(await analistaService.getMercados());
       } catch (err) {
         console.error('Error cargando mercados:', err);
       }

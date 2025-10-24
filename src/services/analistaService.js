@@ -91,7 +91,7 @@ export async function getEstadisticasEmpresa(idMercado = null) {
     return res.data;
 }
 
-export async function getMercadosAnalista() {
+export async function getMercados() {
     const res = await axios.get('/api/analista/mercados', { headers: authHeader() });
     return res.data;
 }

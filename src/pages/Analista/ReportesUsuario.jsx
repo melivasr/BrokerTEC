@@ -130,8 +130,8 @@ const ResumenUsuario = ({ alias, historial, isMobile }) => {
         </div>
         <div>
           <div style={{ fontSize: 12, color: '#666' }}>Balance</div>
-          <div style={{ fontSize: 18, fontWeight: 'bold', color: montoVentas - montoCompras >= 0 ? '#28a745' : '#dc3545' }}>
-            ${(montoVentas - montoCompras).toLocaleString()}
+          <div style={{ fontSize: 18, fontWeight: 'bold', color: montoCompras - montoVentas >= 0 ? '#28a745' : '#dc3545' }}>
+            ${(montoCompras - montoVentas).toLocaleString()}
           </div>
         </div>
       </div>
@@ -159,7 +159,7 @@ const ResumenUsuario = ({ alias, historial, isMobile }) => {
 export default function ReportesUsuario() {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [alias, setAlias] = useState("");
-  const [filtros, setFiltros] = useState({ desde: "", hasta: "", empresaId: "", tipo: "", ordenar: "" });
+  const [filtros, setFiltros] = useState({ desde: "", hasta: "", tipo: "", ordenar: "" });
   const [resultado, setResultado] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -186,7 +186,6 @@ export default function ReportesUsuario() {
       const params = {};
       if (filtros.desde) params.fecha_inicio = filtros.desde;
       if (filtros.hasta) params.fecha_fin = filtros.hasta;
-      if (filtros.empresaId) params.id_empresa = filtros.empresaId;
       if (filtros.tipo) params.tipo = filtros.tipo;
       if (filtros.ordenar) params.ordenar = filtros.ordenar;
 
@@ -198,7 +197,7 @@ export default function ReportesUsuario() {
       const mensaje = err?.response?.data?.message || err?.message || 'Error al buscar usuario';
       
       if (mensaje === 'alias inexistente' || err?.response?.status === 404) {
-        setError('Usuario no encontrado');
+        setError('Alias inexistente');
       } else {
         setError(mensaje);
       }
@@ -255,16 +254,6 @@ export default function ReportesUsuario() {
                 type="date" 
                 value={filtros.hasta} 
                 onChange={(e) => setFiltros({ ...filtros, hasta: e.target.value })} 
-                style={inputStyle}
-              />
-            </div>
-            
-            <div>
-              <label style={{ display: 'block', marginBottom: 4 }}>Empresa (ID)</label>
-              <input 
-                value={filtros.empresaId} 
-                onChange={(e) => setFiltros({ ...filtros, empresaId: e.target.value })} 
-                placeholder="Opcional" 
                 style={inputStyle}
               />
             </div>
