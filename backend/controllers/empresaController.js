@@ -34,15 +34,19 @@ export async function createEmpresa(req, res) {
 export async function getEmpresaDetalle(req, res) {
     const { id } = req.params;
     console.log('getEmpresaDetalle llamado con id=', id);
-    // Validar que recibimos un GUID para evitar errores de conversión en SQL
+
+    // Validar que recibimos un GUID válido
     const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (!id || !guidRegex.test(id)) {
         return res.status(400).json({ message: 'ID de empresa inválido' });
     }
+
     try {
         // 1) Obtener datos base de la empresa
         const empresas = await queryDB('SELECT id, id_mercado, nombre, ticker FROM Empresa WHERE id = @id', { id });
-        if (!empresas || empresas.length === 0) return res.status(404).json({ message: 'Empresa no encontrada' });
+        if (!empresas || empresas.length === 0)
+            return res.status(404).json({ message: 'Empresa no encontrada' });
+
         const empresaRow = empresas[0];
 
         // 2) Obtener inventario (precio actual, acciones totales y disponibles, capitalizacion)
@@ -51,20 +55,23 @@ export async function getEmpresaDetalle(req, res) {
             { id }
         );
         const inventario = inventarios && inventarios.length > 0 ? inventarios[0] : null;
-
-        // 3) Obtener historial de precios (orden descendente por fecha). Excluir el registro más reciente para que "precio actual" sea el
-        // tomado desde Inventario.precio y el histórico contenga solo previos.
+        
+        // 3) Obtener historial de precios (excluyendo el más reciente)
         const historialAll = await queryDB(
             'SELECT fecha, precio FROM Inventario_Historial WHERE id_empresa = @id ORDER BY fecha DESC',
             { id }
         );
-        // Transformar a formato { fecha, valor } y excluir el primer registro (más reciente)
-        const historicoPrevio = (historialAll || []).slice(1).map(row => ({ fecha: new Date(row.fecha).toISOString(), valor: Number(row.precio) }));
+        const historicoPrevio = (historialAll || [])
+            .slice(1)
+            .map(row => ({
+                fecha: new Date(row.fecha).toISOString(),
+                valor: Number(row.precio),
+            }));
 
-        // 4) Determinar mayor tenedor comparando inventario (tesorería) vs. portafolios de usuarios
-        // Obtener mayor tenedor por usuarios (alias) para esa empresa
+        // 4) Determinar mayor tenedor
         const holders = await queryDB(
-            `SELECT u.alias, p.acciones FROM Portafolio p
+            `SELECT u.alias, p.acciones 
+             FROM Portafolio p
              JOIN Usuario u ON u.id_portafolio = p.id
              WHERE p.id_empresa = @id
              ORDER BY p.acciones DESC`,
@@ -76,19 +83,80 @@ export async function getEmpresaDetalle(req, res) {
             mayor_tenedor_alias = holders[0].alias;
         }
 
-        // Comparar con tesoreria (inventario)
         if (inventario) {
             const tesoreriaAcciones = Number(inventario.acciones_disponibles);
             const topHolderAcciones = holders && holders.length > 0 ? Number(holders[0].acciones) : 0;
             if (tesoreriaAcciones >= topHolderAcciones) {
                 mayor_tenedor_alias = 'administracion';
             }
-        } else {
-            // Si no hay inventario, y no hay holders, dejar null
-            if (!mayor_tenedor_alias) mayor_tenedor_alias = null;
         }
 
-        // 5) Construir objeto de respuesta con las claves que el frontend espera
+        // 5) Determinar posición real del usuario (calculada desde las transacciones)
+        let posicionUsuario = 0;
+        try {
+            const authHeader = req.headers?.authorization;
+            if (authHeader) {
+                const token = authHeader.split(' ')[1];
+                if (token) {
+                    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                    const userId = decoded?.id;
+
+                    if (userId) {
+                        // Obtener el alias del usuario
+                        const userRes = await queryDB(
+                            'SELECT alias FROM Usuario WHERE id = @userId',
+                            { userId }
+                        );
+                        const alias = userRes[0]?.alias;
+
+                        if (alias) {
+                            // Calcular la posición DIRECTAMENTE desde las transacciones (sin depender de Portafolio)
+                            const posicionRes = await queryDB(
+                                `SELECT 
+                                    ISNULL(SUM(CASE 
+                                        WHEN tipo = 'Compra' THEN cantidad 
+                                        WHEN tipo = 'Venta' THEN -cantidad 
+                                        ELSE 0 
+                                    END), 0) AS cantidad
+                                FROM Transaccion 
+                                WHERE alias = @alias AND id_empresa = @id`,
+                                { alias, id }
+                            );
+                            
+                            if (posicionRes && posicionRes.length > 0) {
+                                posicionUsuario = Number(posicionRes[0].cantidad || 0);
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn("No se pudo obtener posición del usuario:", err.message);
+        }
+        
+        // 6) Determinar si la empresa es favorita para el usuario autenticado
+        let favoritaFlag = false;
+        try {
+            const authHeader = req.headers?.authorization;
+            if (authHeader) {
+                const token = authHeader.split(' ')[1];
+                if (token) {
+                    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+                    const userId = decoded?.id;
+                    if (userId) {
+                        const fav = await queryDB(
+                            'SELECT 1 FROM Empresa_Favorita WHERE id_empresa = @id AND id_usuario = @userId',
+                            { id, userId }
+                        );
+                        if (fav && fav.length > 0) favoritaFlag = true;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('No se pudo verificar favoritas:', e?.message || e);
+        }
+
+        // 7) Construir respuesta final
         const empresa = {
             id: empresaRow.id,
             nombre: empresaRow.nombre,
@@ -97,36 +165,18 @@ export async function getEmpresaDetalle(req, res) {
             cantidad_acciones_totales: inventario ? Number(inventario.acciones_totales) : null,
             acciones_disponibles: inventario ? Number(inventario.acciones_disponibles) : null,
             capitalizacion: inventario ? Number(inventario.capitalizacion) : null,
-            mayor_tenedor_alias: mayor_tenedor_alias,
+            mayor_tenedor_alias,
+            posicion_usuario: posicionUsuario,
         };
 
-        // Determinar si el usuario autenticado marcó como favorita (si viene token)
-        let favoritaFlag = false;
-        try {
-            const authHeader = req.headers && req.headers.authorization;
-            if (authHeader) {
-                const token = authHeader.split(' ')[1];
-                if (token) {
-                    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-                    const userId = decoded?.id;
-                    if (userId) {
-                        const fav = await queryDB('SELECT 1 FROM Empresa_Favorita WHERE id_empresa = @id AND id_usuario = @userId', { id, userId });
-                        if (fav && fav.length > 0) favoritaFlag = true;
-                    }
-                }
-            }
-        } catch (e) {
-            // no bloquear la vista si el token es inválido; simplemente ignorar
-            console.warn('No se pudo verificar token en getEmpresaDetalle:', e?.message || e);
-        }
-
-        // Responder
         res.json({ empresa, historico: historicoPrevio, favorita: favoritaFlag });
+
     } catch (err) {
         console.error('Error en getEmpresaDetalle:', err);
         res.status(500).json({ message: 'Error al obtener detalle de empresa', error: err.message });
     }
 }
+
 
 // Marcar/Desmarcar empresa como favorita (toggle) para el usuario autenticado
 export async function marcarFavorita(req, res) {

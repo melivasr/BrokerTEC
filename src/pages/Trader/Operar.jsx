@@ -7,7 +7,6 @@ import { getWallet } from "../../services/walletService";
 export default function Operar() {
   const [searchParams] = useSearchParams();
   const { empresaId: empresaIdParam } = useParams();
-  // Preferir parámetro de ruta si está presente, si no usar query param
   const empresaId = empresaIdParam || searchParams.get("empresa");
   const [empresa, setEmpresa] = useState(null);
   const [wallet, setWallet] = useState(null);
@@ -22,25 +21,21 @@ export default function Operar() {
       setError("");
       try {
         if (!empresaId) {
-          setError('ID de empresa inválido');
+          setError("ID de empresa inválido");
           return;
         }
-        console.log('[Operar] fetchData - empresaId=', empresaId);
         const e = await empresaService.getDetalleEmpresa(empresaId);
-        console.log('[Operar] getDetalleEmpresa response=', e);
         setEmpresa(e.empresa);
         const w = await getWallet();
-        console.log('[Operar] getWallet response=', w);
         setWallet(w);
       } catch (err) {
-        const msg = err?.response?.data?.message || err?.message || 'Error al cargar datos';
+        const msg = err?.response?.data?.message || err?.message || "Error al cargar datos";
         setError(msg);
       }
     }
     fetchData();
   }, [empresaId]);
 
-  // Esperar hasta tener ambos datos (empresa y wallet). Si alguno falta, mostrar carga (o el error si existe).
   if (!empresa || !wallet) {
     if (error) {
       return (
@@ -48,7 +43,7 @@ export default function Operar() {
           <Sidebar rol="Trader" />
           <main className="app-main">
             <h2>Operar Empresa</h2>
-            <div style={{ color: 'red' }}>{error}</div>
+            <div style={{ color: "red" }}>{error}</div>
           </main>
         </div>
       );
@@ -56,7 +51,6 @@ export default function Operar() {
     return <div>Cargando...</div>;
   }
 
-  // Calcular máximo comprable
   const maxPorCash = Math.floor(wallet.saldo / empresa.precio_actual);
   const maxPorInventario = empresa.acciones_disponibles;
   const maxComprable = Math.min(maxPorCash, maxPorInventario);
@@ -73,59 +67,61 @@ export default function Operar() {
       setLoading(false);
       return;
     }
+
     if (accion === "Compra") {
       if (!empresa.precio_actual) {
-        setError('inventario no disponible');
+        setError("inventario no disponible");
+        setLoading(false);
+        return;
+      }
+      if (maxComprable < cantidad) {
+        setError("saldo insuficiente");
         setLoading(false);
         return;
       }
       if (maxComprable <= 0) {
-        setError('saldo insuficiente');
+        setError("saldo insuficiente");
         setLoading(false);
         return;
       }
       if (cant > maxComprable) {
-        setError('inventario insuficiente');
+        setError("inventario insuficiente");
         setLoading(false);
         return;
       }
-      // Llamar al backend para comprar
       try {
         const res = await empresaService.comprarAcciones(empresaId, cant);
-        setSuccess(res?.message || 'Compra realizada');
-        setCantidad('');
-        // refrescar datos
+        setSuccess(res?.message || "Compra realizada");
+        setCantidad("");
         const e = await empresaService.getDetalleEmpresa(empresaId);
         setEmpresa(e.empresa);
         const w = await getWallet();
         setWallet(w);
       } catch (err) {
-        const msg = err?.response?.data?.message || err?.message || 'Error en la compra';
+        const msg = err?.response?.data?.message || err?.message || "Error en la compra";
         setError(msg);
       }
     } else {
-      if (maxVendible === 0) {
-        setError('posición insuficiente');
+      if (maxVendible <= 0) {
+        setError("posición insuficiente");
         setLoading(false);
         return;
       }
       if (cant > maxVendible) {
-        setError('posición insuficiente');
+        setError("posición insuficiente");
         setLoading(false);
         return;
       }
-      // Llamar al backend para vender
       try {
         const res = await empresaService.venderAcciones(empresaId, cant);
-        setSuccess(res?.message || 'Venta realizada');
-        setCantidad('');
-        // refrescar datos
+        setSuccess(res?.message || "Venta realizada");
+        setCantidad("");
         const e = await empresaService.getDetalleEmpresa(empresaId);
         setEmpresa(e.empresa);
         const w = await getWallet();
         setWallet(w);
       } catch (err) {
-        const msg = err?.response?.data?.message || err?.message || 'Error en la venta';
+        const msg = err?.response?.data?.message || err?.message || "Error en la venta";
         setError(msg);
       }
     }
@@ -143,28 +139,39 @@ export default function Operar() {
           <p><b>Acciones disponibles:</b> {empresa.acciones_disponibles}</p>
           <p><b>Saldo en wallet:</b> ${wallet.saldo}</p>
           <p><b>Posición actual:</b> {empresa.posicion_usuario || 0}</p>
+          <p>
+            <b>{accion === "Compra" ? "Máximo comprable" : "Máximo vendible"}:</b>{" "}
+            {accion === "Compra" ? maxComprable : maxVendible}
+          </p>
+
           <form onSubmit={handleOperar} style={{ marginTop: 24 }}>
             <label>Acción:</label>
-            <select value={accion} onChange={e => setAccion(e.target.value)} className="form-control">
+            <select
+              value={accion}
+              onChange={(e) => setAccion(e.target.value)}
+              className="form-control"
+            >
               <option value="Compra">Comprar</option>
               <option value="Venta">Vender</option>
             </select>
+
             <label>Cantidad:</label>
             <input
               type="number"
-              min="1"
-              max={accion === "Compra" ? maxComprable : maxVendible}
               value={cantidad}
-              onChange={e => setCantidad(e.target.value)}
+              onChange={(e) => setCantidad(e.target.value)}
               className="form-control"
+              placeholder="Ingrese la cantidad"
               required
             />
+
             <button type="submit" disabled={loading} className="btn-block">
-              {loading ? 'Procesando...' : accion}
+              {loading ? "Procesando..." : accion}
             </button>
           </form>
-          {error && <div style={{ color: 'red', marginTop: 10 }}>{error}</div>}
-          {success && <div style={{ color: 'green', marginTop: 10 }}>{success}</div>}
+
+          {error && <div style={{ color: "red", marginTop: 10 }}>{error}</div>}
+          {success && <div style={{ color: "green", marginTop: 10 }}>{success}</div>}
         </div>
       </main>
     </div>

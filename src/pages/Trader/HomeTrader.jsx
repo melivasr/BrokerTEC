@@ -94,7 +94,7 @@ export default function HomeTrader() {
             ) : (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart
-                  data={mercado.empresas}
+                  data={[...mercado.empresas].slice(0, 5)}
                   layout="vertical"
                   margin={{ left: 40, right: 40 }}
                 >

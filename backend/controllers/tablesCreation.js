@@ -2,6 +2,7 @@ import { queryDB } from "../config/db.js";
 
 export default async function createAllTables() {
   try {
+    // === CREACIÓN DE TABLAS ===
     await queryDB(`
       CREATE TABLE Mercado (
         id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
@@ -41,7 +42,6 @@ export default async function createAllTables() {
         acciones INT NOT NULL CHECK (acciones >= 0),
         CONSTRAINT FK_Portafolio_Empresa
           FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
-          -- NO CASCADE: Portafolio e historial deben sobrevivir; Empresa no se borra
       );
     `);
 
@@ -60,12 +60,13 @@ export default async function createAllTables() {
         correo NVARCHAR(120) NOT NULL UNIQUE,
         rol NVARCHAR(20) NOT NULL CHECK (rol IN ('Admin','Trader','Analista')),
         contrasena_hash VARCHAR(255) NOT NULL,
+        ultimo_acceso_seguridad DATETIME NULL,
         CONSTRAINT FK_Usuario_Billetera
           FOREIGN KEY (id_billetera) REFERENCES Billetera(id)
-          ON DELETE SET NULL,       
+          ON DELETE SET NULL,
         CONSTRAINT FK_Usuario_Portafolio
           FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
-          ON DELETE SET NULL          
+          ON DELETE SET NULL
       );
     `);
 
@@ -76,10 +77,10 @@ export default async function createAllTables() {
         PRIMARY KEY (id_mercado, id_usuario),
         CONSTRAINT FK_MH_Mercado
           FOREIGN KEY (id_mercado) REFERENCES Mercado(id)
-          ON DELETE CASCADE,       
+          ON DELETE CASCADE,
         CONSTRAINT FK_MH_Usuario
           FOREIGN KEY (id_usuario) REFERENCES Usuario(id)
-          ON DELETE CASCADE            
+          ON DELETE CASCADE
       );
     `);
 
@@ -92,7 +93,7 @@ export default async function createAllTables() {
         capitalizacion AS (acciones_disponibles * precio),
         CONSTRAINT FK_Inventario_Empresa
           FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
-          ON DELETE CASCADE         
+          ON DELETE CASCADE
       );
     `);
 
@@ -107,11 +108,12 @@ export default async function createAllTables() {
         precio DECIMAL(19,4) NOT NULL CHECK (precio > 0),
         cantidad INT NOT NULL CHECK (cantidad > 0),
         fecha DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
-        CONSTRAINT FK_Transaccion_Usuario FOREIGN KEY (alias) REFERENCES Usuario(alias),
+        CONSTRAINT FK_Transaccion_Usuario 
+          FOREIGN KEY (alias) REFERENCES Usuario(alias)
+          ON UPDATE CASCADE,
         CONSTRAINT FK_Transaccion_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id),
         CONSTRAINT FK_Transaccion_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id),
         CONSTRAINT FK_Transaccion_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
-        -- IMPORTANTE: sin CASCADE para preservar auditoría/historial
       );
     `);
 
@@ -126,7 +128,7 @@ export default async function createAllTables() {
         PRIMARY KEY (fecha, id_empresa),
         CONSTRAINT FK_IH_Empresa
           FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
-          ON DELETE CASCADE            
+          ON DELETE CASCADE
       );
     `);
 
@@ -156,10 +158,10 @@ export default async function createAllTables() {
         PRIMARY KEY (fecha, id_portafolio, id_empresa),
         CONSTRAINT FK_PH_Portafolio
           FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
-          ON DELETE CASCADE,           -- si se elimina un portafolio, limpiar su historial
+          ON DELETE CASCADE,
         CONSTRAINT FK_PH_Empresa
           FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
-          ON DELETE CASCADE            -- si se eliminara Empresa, limpiar rastro histórico
+          ON DELETE CASCADE
       );
     `);
 
@@ -177,9 +179,52 @@ export default async function createAllTables() {
       );
     `);
 
-    console.log('Tablas creadas correctamente (modelo schema.sql, con cascadas seguras)');
+    // === CREACIÓN DE TRIGGERS ===
+    await queryDB(`
+      DROP TRIGGER IF EXISTS TRG_UpdateUsuarioIdBilletera;
+      DROP TRIGGER IF EXISTS TRG_UpdateUsuarioIdPortafolio;
+      DROP TRIGGER IF EXISTS TRG_UpdateUsuarioAlias;
+    `);
+
+    await queryDB(`
+      CREATE TRIGGER TRG_UpdateUsuarioIdBilletera
+      ON Usuario
+      AFTER UPDATE
+      AS
+      BEGIN
+          SET NOCOUNT ON;
+          IF UPDATE(id_billetera)
+          BEGIN
+              UPDATE T
+              SET T.id_billetera = I.id_billetera
+              FROM Transaccion AS T
+              INNER JOIN deleted AS D ON T.alias = D.alias
+              INNER JOIN inserted AS I ON D.id = I.id;
+          END
+      END;
+    `);
+
+    await queryDB(`
+      CREATE TRIGGER TRG_UpdateUsuarioIdPortafolio
+      ON Usuario
+      AFTER UPDATE
+      AS
+      BEGIN
+          SET NOCOUNT ON;
+          IF UPDATE(id_portafolio)
+          BEGIN
+              UPDATE T
+              SET T.id_portafolio = I.id_portafolio
+              FROM Transaccion AS T
+              INNER JOIN deleted AS D ON T.alias = D.alias
+              INNER JOIN inserted AS I ON D.id = I.id;
+          END
+      END;
+    `);
+
+    console.log("✅ Tablas y triggers creados correctamente.");
   } catch (err) {
-    console.error('Error creando tablas:', err);
+    console.error("❌ Error creando tablas o triggers:", err);
     throw err;
   }
 }

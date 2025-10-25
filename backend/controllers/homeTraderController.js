@@ -19,7 +19,7 @@ export async function getHomeTraderData(req, res) {
     const result = [];
     for (const mercado of mercados) {
       const empresas = await queryDB(
-        `SELECT TOP 5 e.id, e.nombre, e.ticker,
+        `SELECT e.id, e.nombre, e.ticker,
                 i.precio AS precio_actual,
                 i.acciones_disponibles * i.precio AS capitalizacion,
                 i.acciones_disponibles,

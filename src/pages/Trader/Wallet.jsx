@@ -65,7 +65,7 @@ export default function Wallet() {
     setError("");
     setSuccess("");
       if (!monto || isNaN(monto) || Number(monto) <= 0) {
-        setError("monto inválido");
+        setError("Monto inválido. Debe ser un número mayor a 0.");
       return;
     }
     // Validar límite diario
@@ -75,7 +75,7 @@ export default function Wallet() {
       }
       const limiteRestante = wallet.limite_diario - wallet.consumo_diario;
       if (Number(monto) > limiteRestante) {
-        setError("se alcanzó el límite diario");
+        setError(`El monto excede el límite disponible. Máximo permitido: $${limiteRestante.toFixed(2)}`);
       return;
     }
     setLoading(true);
@@ -152,7 +152,6 @@ export default function Wallet() {
             <input
               type="number"
               min="1"
-              max={wallet.limite_diario - wallet.consumo_diario}
               step="1"
               value={monto}
               onChange={e => setMonto(e.target.value)}

@@ -22,3 +22,21 @@ export async function habilitarMercado(usuarioId, mercado_id) {
 export async function deshabilitarUsuario(usuarioId, justificacion) {
   return (await axios.post(`/api/usuarios/${usuarioId}/deshabilitar`, { justificacion }, { headers: authHeader() })).data;
 }
+
+ // Liquidar todas las posiciones del usuario
+ export async function liquidarTodo({ id, password }) {
+	const res = await axios.post('/api/usuario/liquidar-todo', { password }, { headers: authHeader() });
+     return res.data;
+ }
+
+// Último acceso a Seguridad (acceso anterior)
+export async function getLastAccessSeguridad() {
+  const res = await axios.get('/api/usuario/last-access-seguridad', { headers: authHeader() });
+  return res.data;
+}
+
+// Registrar el acceso actual a Seguridad
+export async function registrarAccesoSeguridad() {
+  const res = await axios.post('/api/usuario/registrar-acceso-seguridad', {}, { headers: authHeader() });
+  return res.data;
+}

@@ -4,31 +4,58 @@ import { dbConfig } from "../config/db.js";
 import { queryDB } from "../config/db.js";
 
 /**
- * GET /api/usuario/last-access
+ * GET /api/usuario/last-access-seguridad
+ * Retorna el último acceso registrado (ANTES de actualizar)
  */
-export async function getLastAccess(req, res) {
+export async function getLastAccessSeguridad(req, res) {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ message: "Usuario no autenticado" });
 
-    const rows = await queryDB(`SELECT alias FROM Usuario WHERE id = @userId`, { userId });
-    if (!rows || rows.length === 0) return res.status(404).json({ message: "Usuario no encontrado" });
+    const rows = await queryDB(
+      `SELECT ultimo_acceso_seguridad FROM Usuario WHERE id = @userId`, 
+      { userId }
+    );
+    
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ message: "Usuario no encontrado" });
+    }
 
-    const alias = rows[0].alias;
-    const last = await queryDB(`SELECT MAX(fecha) AS lastAccess FROM Transaccion WHERE alias = @alias`, { alias });
-   const raw = last && last[0] && last[0].lastAccess ? new Date(last[0].lastAccess) : null;
-    if (!raw) return res.json({ lastAccess: null });
+    const lastAccess = rows[0].ultimo_acceso_seguridad;
+    
+    if (!lastAccess) {
+      return res.json({ lastAccess: null });
+    }
 
-    // Costa Rica = UTC-6
-    const offsetMs = 6 * 60 * 60 * 1000;
-    const crDate = new Date(raw.getTime() - offsetMs);
-    // Formato ISO con offset -06:00 (ej: 2025-10-18T12:34:56.789-06:00)
-    const isoNoZ = crDate.toISOString().replace('Z', '');
-    const lastAccessCR = `${isoNoZ}-06:00`;
-    return res.json({ lastAccess: lastAccessCR });
+    // Simplemente convertir a ISO string
+    const isoString = lastAccess.toISOString();
+    
+    return res.json({ lastAccess: isoString });
+      
   } catch (err) {
-    console.error("getLastAccess error:", err);
+    console.error("getLastAccessSeguridad error:", err);
     return res.status(500).json({ message: "Error al obtener último acceso", error: err.message });
+  }
+}
+
+/**
+ * POST /api/usuario/registrar-acceso-seguridad
+ * Actualiza el timestamp del último acceso a Seguridad
+ */
+export async function registrarAccesoSeguridad(req, res) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ message: "Usuario no autenticado" });
+
+    await queryDB(
+      `UPDATE Usuario SET ultimo_acceso_seguridad = GETDATE() WHERE id = @userId`,
+      { userId }
+    );
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("registrarAccesoSeguridad error:", err);
+    return res.status(500).json({ message: "Error al registrar acceso", error: err.message });
   }
 }
 

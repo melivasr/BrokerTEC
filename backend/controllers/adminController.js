@@ -217,7 +217,6 @@ export async function updateInventario(req, res) {
   }
 }
 
-//Deslistar
 export async function delistarEmpresa(req, res) {
   const { id } = req.params;
   const { justificacion, precio_liquidacion } = req.body;
@@ -226,7 +225,7 @@ export async function delistarEmpresa(req, res) {
   if (!justificacion?.trim()) return res.status(400).json({ message: 'Justificación requerida' });
 
   try {
-    //Empresa + precio base
+    // Empresa + precio base
     const emp = await queryDB(
       `SELECT e.nombre, e.ticker, i.precio
          FROM Empresa e
@@ -267,15 +266,18 @@ export async function delistarEmpresa(req, res) {
         { alias: pos.alias }
       );
       if (!u.length || !u[0].id_billetera || !u[0].id_portafolio) continue;
+      
       const idBilletera = u[0].id_billetera;
       const idPortafolio = u[0].id_portafolio;
 
       const monto = cantidad * precio;
-      //  Abonar al wallet
+      
+      // Abonar al wallet
       await queryDB(
         `UPDATE Billetera SET fondos = fondos + @monto WHERE id = @id_billetera`,
         { monto, id_billetera: idBilletera }
       );
+      
       // Devolver acciones a Tesorería
       await queryDB(
         `UPDATE Inventario
@@ -283,6 +285,7 @@ export async function delistarEmpresa(req, res) {
           WHERE id_empresa = @id`,
         { cantidad, id }
       );
+      
       // Registrar la "venta" por delist 
       await queryDB(
         `INSERT INTO Transaccion (alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad)
@@ -297,19 +300,33 @@ export async function delistarEmpresa(req, res) {
         }
       );
 
+      // ✅ CORRECCIÓN MEJORADA: Actualizar SOLO las filas del portafolio específico Y empresa específica
+      // Verificar primero qué estructura tiene tu tabla
+      const portafolioCheck = await queryDB(
+        `SELECT * FROM Portafolio WHERE id_empresa = @id_empresa`,
+        { id_empresa: id }
+      );
+      
+      console.log('Estructura Portafolio:', portafolioCheck);
+      
+      // Intentar actualización específica
+      await queryDB(
+        `UPDATE p
+         SET p.acciones = 0 
+         FROM Portafolio p
+         INNER JOIN Usuario u ON u.id_portafolio = p.id
+         WHERE u.alias = @alias 
+         AND p.id_empresa = @id_empresa`,
+        { alias: pos.alias, id_empresa: id }
+      );
+
       totalLiquidado += monto;
       posicionesLiquidadas++;
     }
-    // Cerrar posiciones en Portafolio 
+
+    // Marcar empresa como delistada 
     await queryDB(
-      `UPDATE Portafolio SET acciones = 0 WHERE id_empresa = @id`,
-      { id }
-    );
-    //  Marcar empresa como delistada 
-    await queryDB(
-      `UPDATE Empresa
-          SET delistada = 1
-        WHERE id = @id`,
+      `UPDATE Empresa SET delistada = 1 WHERE id = @id`,
       { id }
     );
 

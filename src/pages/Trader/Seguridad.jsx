@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { getCurrentUser } from "../../services/authService";
-import * as empresaService from "../../services/empresaService";
+import * as empresaService from "../../services/userService";
 
 export default function Seguridad() {
   const [user, setUser] = useState(null);
@@ -14,33 +14,40 @@ export default function Seguridad() {
 
   useEffect(() => {
     setUser(getCurrentUser());
-    // Suponiendo que empresaService.getLastAccess() retorna el último acceso
+    
     async function fetchLastAccess() {
       try {
-        const data = await empresaService.getLastAccess();
+        // Primero obtener el último acceso (anterior)
+        const data = await empresaService.getLastAccessSeguridad();
         setLastAccess(data.lastAccess);
+        
+        // Luego registrar el acceso actual (será el "anterior" la próxima vez)
+        await empresaService.registrarAccesoSeguridad();
       } catch {
         setLastAccess("");
       }
     }
+    
     fetchLastAccess();
   }, []);
 
   const handleLiquidar = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    setLoading(true);
-    try {
-      await empresaService.liquidarTodo({ id: user.id, password });
-      setSuccess("Liquidación exitosa. Todas tus posiciones han sido vendidas.");
-      setPassword("");
-      setConfirming(false);
-    } catch (err) {
-      setError(err?.message || "contraseña incorrecta");
-    }
-    setLoading(false);
-  };
+  e.preventDefault();
+  setError("");
+  setSuccess("");
+  setLoading(true);
+  try {
+    await empresaService.liquidarTodo({ id: user.id, password });
+    setSuccess("Liquidación exitosa. Todas tus posiciones han sido vendidas.");
+    setPassword("");
+    setConfirming(false);
+  } catch (err) {
+    // Extraer el mensaje correcto del error de axios
+    const errorMessage = err?.response?.data?.message || err?.message || "Error desconocido";
+    setError(errorMessage);
+  }
+  setLoading(false);
+};
 
   return (
     <div style={{ display: "flex" }}>

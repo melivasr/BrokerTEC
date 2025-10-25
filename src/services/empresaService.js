@@ -72,16 +72,3 @@ export async function comprarAcciones(empresaId, cantidad) {
 	 const res = await axios.get('/api/portafolio', { headers: authHeader() });
 	 return res.data;
  }
-
- 
- // Último acceso del usuario
- export async function getLastAccess() {
-	 const res = await axios.get('/api/usuario/last-access', { headers: authHeader() });
-      return res.data;
- }
-  
- // Liquidar todas las posiciones del usuario
- export async function liquidarTodo({ id, password }) {
-	const res = await axios.post('/api/usuario/liquidar-todo', { password }, { headers: authHeader() });
-     return res.data;
- }
