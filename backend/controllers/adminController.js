@@ -300,8 +300,7 @@ export async function delistarEmpresa(req, res) {
         }
       );
 
-      // ✅ CORRECCIÓN MEJORADA: Actualizar SOLO las filas del portafolio específico Y empresa específica
-      // Verificar primero qué estructura tiene tu tabla
+      // Actualizar SOLO las filas del portafolio específico Y empresa específica
       const portafolioCheck = await queryDB(
         `SELECT * FROM Portafolio WHERE id_empresa = @id_empresa`,
         { id_empresa: id }

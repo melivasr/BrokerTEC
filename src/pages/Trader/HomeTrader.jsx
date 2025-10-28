@@ -18,6 +18,8 @@ export default function HomeTrader() {
     setUser(u);
   }, []);
 
+  const usuarioDeshabilitado = user && (user.habilitado === 0 || user.habilitado === false);
+
   useEffect(() => {
     if (!user) {
       setError("Usuario no autenticado");
@@ -77,7 +79,7 @@ export default function HomeTrader() {
                 <li key={f.id} style={{ marginBottom: 8 }}>
                   <b>{f.nombre}</b> ({f.ticker}) - Precio: ${f.precio_actual ?? 'N/A'}
                   <button onClick={() => window.location.href = `/trader/empresa/${f.id}`} style={{ marginLeft: 8, marginBottom: 8 }} className="btn-block">Ver</button>
-                  <button onClick={() => window.location.href = `/trader/operar/${f.id}`} style={{ marginLeft: 8 }} className="btn-block">Operar</button>
+                  <button onClick={() => window.location.href = `/trader/operar/${f.id}`} style={{ marginLeft: 8 }} className="btn-block" disabled={usuarioDeshabilitado}>Operar</button>
                 </li>
               ))}
             </ul>
@@ -113,7 +115,7 @@ export default function HomeTrader() {
                   <b>{e.nombre}</b> ({e.ticker}) - Capitalización: ${e.capitalizacion?.toLocaleString?.() ?? 'N/A'}<br/>
                   Precio actual: ${e.precio_actual ?? e.precio ?? 'N/A'} | Variación: {e.variacion !== null && e.variacion !== undefined ? (e.variacion > 0 ? '+' : '') + e.variacion : 'N/A'}<br/>
                   <button onClick={() => window.location.href = `/trader/empresa/${e.id}`} style={{ marginBottom: 8, marginLeft: 8 }} className="btn-block">Ver Empresa</button>
-                  <button onClick={() => window.location.href = `/trader/operar/${e.id}`} style={{ marginLeft: 8 }} className="btn-block">Operar</button>
+                  <button onClick={() => window.location.href = `/trader/operar/${e.id}`} style={{ marginLeft: 8 }} className="btn-block" disabled={usuarioDeshabilitado}>Operar</button>
                 </li>
               ))}
             </ul>

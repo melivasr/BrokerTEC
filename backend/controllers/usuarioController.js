@@ -2,6 +2,7 @@ import bcrypt from "bcryptjs";
 import sql from "mssql";
 import { dbConfig } from "../config/db.js";
 import { queryDB } from "../config/db.js";
+import { isUserEnabled } from '../utils/userHelpers.js';
 
 /**
  * GET /api/usuario/last-access-seguridad
@@ -70,6 +71,15 @@ export async function liquidarTodo(req, res) {
   const { password } = req.body;
   if (!userId) return res.status(401).json({ message: "Usuario no autenticado" });
   if (!password) return res.status(400).json({ message: "Contraseña requerida" });
+
+  // verificar que el usuario esté habilitado
+  try {
+    const enabled = await isUserEnabled(userId);
+    if (!enabled) return res.status(403).json({ message: 'Usuario deshabilitado' });
+  } catch (e) {
+    console.error('Error verificando habilitado en liquidarTodo:', e);
+    return res.status(500).json({ message: 'Error interno' });
+  }
 
   try {
     // verificar contraseña

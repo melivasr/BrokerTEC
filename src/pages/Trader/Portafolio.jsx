@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import * as empresaService from "../../services/empresaService";
 import { getWallet } from "../../services/walletService";
+import { getCurrentUser } from "../../services/authService";
 
 export default function Portafolio() {
   const [posiciones, setPosiciones] = useState([]);
@@ -11,6 +12,8 @@ export default function Portafolio() {
   const [cantidadVenta, setCantidadVenta] = useState({});
   const [success, setSuccess] = useState("");
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const currentUser = getCurrentUser();
+  const usuarioDeshabilitado = currentUser && (currentUser.habilitado === 0 || currentUser.habilitado === false);
 
   useEffect(() => {
     function handleResize() {
@@ -45,6 +48,10 @@ export default function Portafolio() {
   const handleVender = async (empresa_id) => {
     setError("");
     setSuccess("");
+    if (usuarioDeshabilitado) {
+      setError('Cuenta deshabilitada: no puedes realizar ventas');
+      return;
+    }
     const cantidad = Number(cantidadVenta[empresa_id]);
     if (!cantidad || cantidad <= 0) {
       setError("Ingrese una cantidad válida");
@@ -133,6 +140,7 @@ export default function Portafolio() {
                             (window.location.href = `/trader/operar/${p.empresa_id}`)
                           }
                           className="small-hide-mobile"
+                          disabled={usuarioDeshabilitado}
                         >
                           Comprar más
                         </button>
@@ -168,6 +176,7 @@ export default function Portafolio() {
                             className="btn-block"
                             style={{ display: "inline-block", marginLeft: 8 }}
                             disabled={
+                              usuarioDeshabilitado ||
                               !cantidadVenta[p.empresa_id] ||
                               Number(cantidadVenta[p.empresa_id]) <= 0 ||
                               Number(cantidadVenta[p.empresa_id]) >

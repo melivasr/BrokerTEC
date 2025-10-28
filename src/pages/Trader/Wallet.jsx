@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { getWallet, recargarWallet } from "../../services/walletService";
+import { getCurrentUser } from "../../services/authService";
 import Sidebar from "../../components/Sidebar";
 
 export default function Wallet() {
@@ -9,6 +10,8 @@ export default function Wallet() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [bloqueoRestante, setBloqueoRestante] = useState(null);
+  const currentUser = getCurrentUser();
+  const usuarioDeshabilitado = currentUser && (currentUser.habilitado === 0 || currentUser.habilitado === false);
 
   function formatDuration(ms) {
     if (!ms || ms <= 0) return '00:00:00';
@@ -83,6 +86,11 @@ export default function Wallet() {
       const id = JSON.parse(localStorage.getItem('user'))?.id;
       if (!id) {
         setError('No se encontró el usuario.');
+        setLoading(false);
+        return;
+      }
+      if (usuarioDeshabilitado) {
+        setError('Cuenta deshabilitada: no puedes recargar la wallet.');
         setLoading(false);
         return;
       }

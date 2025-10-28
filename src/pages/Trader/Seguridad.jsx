@@ -31,6 +31,8 @@ export default function Seguridad() {
     fetchLastAccess();
   }, []);
 
+  const usuarioDeshabilitado = user && (user.habilitado === 0 || user.habilitado === false);
+
   const handleLiquidar = async (e) => {
   e.preventDefault();
   setError("");
@@ -62,7 +64,7 @@ export default function Seguridad() {
           <h4>Liquidar todo</h4>
           <p>Esta acción venderá todas tus posiciones al precio actual. Es irreversible y será auditada.</p>
           {!confirming ? (
-            <button onClick={() => setConfirming(true)} style={{ background: 'red', color: 'white' }} className="btn-block">
+            <button onClick={() => setConfirming(true)} style={{ background: 'red', color: 'white' }} className="btn-block" disabled={usuarioDeshabilitado}>
               Liquidar todo
             </button>
           ) : (

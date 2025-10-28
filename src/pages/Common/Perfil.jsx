@@ -14,6 +14,7 @@ export default function Perfil() {
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState("");
   const navigate = useNavigate();
+  const usuarioDeshabilitado = user && (user.habilitado === 0 || user.habilitado === false);
 
   useEffect(() => {
     const u = getCurrentUser();
@@ -110,16 +111,21 @@ export default function Perfil() {
           {success && <div style={{ color: "green", marginBottom: 10 }}>{success}</div>}
           
           {!editMode ? (
-            <>
+             <>
               <h3>Datos personales</h3>
+              {usuarioDeshabilitado && (
+                <div style={{ color: '#b33', marginBottom: 16, padding: 8, border: '1px solid #b33', borderRadius: 4 }}>
+                  Tu cuenta está deshabilitada. No puedes modificar tu perfil.
+                </div>
+              )}
               <p><b>Alias:</b> {user.alias}</p>
               <p><b>Nombre:</b> {user.nombre}</p>
               <p><b>Correo:</b> {user.correo}</p>
               <p><b>Dirección:</b> {user.direccion}</p>
               <p><b>País de origen:</b> {user.pais_origen}</p>
               <p><b>Teléfono:</b> {user.telefono}</p>
-              <button onClick={() => setEditMode(true)} style={{ marginTop: 12 }} className="btn-block">Editar datos</button>
-              <button onClick={handleDelete} style={{ marginLeft: 12, color: 'red' }} className="small-hide-mobile">Eliminar cuenta</button>
+              <button onClick={() => setEditMode(true)} style={{ marginTop: 12 }} className="btn-block" disabled={usuarioDeshabilitado}>Editar datos</button>
+              <button onClick={handleDelete} style={{ marginLeft: 12, color: 'red' }} className="small-hide-mobile" disabled={usuarioDeshabilitado}>Eliminar cuenta</button>
             </>
           ) : (
             <form onSubmit={handleUpdate}>
@@ -143,6 +149,11 @@ export default function Perfil() {
           <hr style={{ margin: '24px 0' }} />
           <form onSubmit={handleChangePassword}>
             <h3>Cambiar contraseña</h3>
+            {usuarioDeshabilitado && (
+              <div style={{ color: '#b33', marginBottom: 16, padding: 8, border: '1px solid #b33', borderRadius: 4 }}>
+                Tu cuenta está deshabilitada. No puedes cambiar tu contraseña.
+              </div>
+            )}
             <input
               className="form-control"
               type={showPassword ? "text" : "password"}
@@ -150,6 +161,7 @@ export default function Perfil() {
               onChange={e => setPasswords({ ...passwords, old: e.target.value })}
               placeholder="Contraseña actual"
               required
+              disabled={usuarioDeshabilitado}
             />
             <input
               className="form-control"
@@ -158,11 +170,12 @@ export default function Perfil() {
               onChange={e => setPasswords({ ...passwords, new: e.target.value })}
               placeholder="Nueva contraseña"
               required
+              disabled={usuarioDeshabilitado}
             />
             <label>
-              <input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} /> Mostrar contraseñas
+              <input type="checkbox" checked={showPassword} onChange={() => setShowPassword(!showPassword)} disabled={usuarioDeshabilitado} /> Mostrar contraseñas
             </label>
-            <button type="submit" style={{ marginTop: 12, marginLeft: 8 }} className="btn-block">Cambiar contraseña</button>
+            <button type="submit" style={{ marginTop: 12, marginLeft: 8 }} className="btn-block" disabled={usuarioDeshabilitado}>Cambiar contraseña</button>
             {pwError && <div style={{ color: "red", marginTop: 8 }}>{pwError}</div>}
             {pwSuccess && <div style={{ color: "green", marginTop: 8 }}>{pwSuccess}</div>}
           </form>

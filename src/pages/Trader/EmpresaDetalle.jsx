@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import * as empresaService from "../../services/empresaService";
 import Sidebar from "../../components/Sidebar";
+import { getCurrentUser } from "../../services/authService";
 
 export default function EmpresaDetalle() {
   const { id, empresaId } = useParams();
@@ -12,6 +13,8 @@ export default function EmpresaDetalle() {
   const [historico, setHistorico] = useState([]);
   const [error, setError] = useState("");
   const [favorita, setFavorita] = useState(false);
+  const currentUser = getCurrentUser();
+  const usuarioDeshabilitado = currentUser && (currentUser.habilitado === 0 || currentUser.habilitado === false);
 
   // Nota: no hacer early return antes de los hooks para cumplir la regla de hooks.
 
@@ -87,7 +90,7 @@ export default function EmpresaDetalle() {
             <p><b>Mayor tenedor:</b> {empresa.mayor_tenedor_alias ? empresa.mayor_tenedor_alias : 'N/A'}</p>
 
             <div style={{ marginTop: 12 }}>
-              <button onClick={handleOperar} style={{ marginRight: 12, marginBottom: 8, marginTop: 8}} className="btn-block">Operar</button>
+              <button onClick={handleOperar} style={{ marginRight: 12, marginBottom: 8, marginTop: 8}} className="btn-block" disabled={usuarioDeshabilitado}>Operar</button>
               <button onClick={handleFavorita} className="btn-block">{favorita ? 'Desmarcar como favorita' : 'Marcar como favorita'}</button>
             </div>
 

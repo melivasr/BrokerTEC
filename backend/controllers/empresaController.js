@@ -2,6 +2,7 @@ import { queryDB } from "../config/db.js";
 import sql from 'mssql';
 import { dbConfig } from '../config/db.js';
 import jwt from 'jsonwebtoken';
+import { isUserEnabled } from '../utils/userHelpers.js';
 
 // Obtener todas las empresas
 export async function getEmpresas(req, res) {
@@ -238,6 +239,15 @@ export async function comprarAcciones(req, res) {
     const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (!id || !guidRegex.test(id)) return res.status(400).json({ message: 'ID de empresa inválido' });
 
+    // verificar que el usuario esté habilitado
+    try {
+        const enabled = await isUserEnabled(user.id);
+        if (!enabled) return res.status(403).json({ message: 'Usuario deshabilitado' });
+    } catch (e) {
+        console.error('Error verificando habilitado en comprarAcciones:', e);
+        return res.status(500).json({ message: 'Error interno' });
+    }
+
     const pool = await sql.connect(dbConfig);
     const transaction = new sql.Transaction(pool);
     try {
@@ -326,6 +336,15 @@ export async function venderAcciones(req, res) {
 
     const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
     if (!id || !guidRegex.test(id)) return res.status(400).json({ message: 'ID de empresa inválido' });
+
+    // verificar que el usuario esté habilitado
+    try {
+        const enabled = await isUserEnabled(user.id);
+        if (!enabled) return res.status(403).json({ message: 'Usuario deshabilitado' });
+    } catch (e) {
+        console.error('Error verificando habilitado en venderAcciones:', e);
+        return res.status(500).json({ message: 'Error interno' });
+    }
 
     const pool = await sql.connect(dbConfig);
     const transaction = new sql.Transaction(pool);

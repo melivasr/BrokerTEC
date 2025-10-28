@@ -3,6 +3,7 @@ import { useSearchParams, useParams } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
 import * as empresaService from "../../services/empresaService";
 import { getWallet } from "../../services/walletService";
+import { getCurrentUser } from "../../services/authService";
 
 export default function Operar() {
   const [searchParams] = useSearchParams();
@@ -15,6 +16,8 @@ export default function Operar() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const currentUser = getCurrentUser();
+  const usuarioDeshabilitado = currentUser && (currentUser.habilitado === 0 || currentUser.habilitado === false);
 
   useEffect(() => {
     async function fetchData() {
@@ -90,6 +93,11 @@ export default function Operar() {
         return;
       }
       try {
+        if (usuarioDeshabilitado) {
+          setError('Cuenta deshabilitada: no puedes realizar compras');
+          setLoading(false);
+          return;
+        }
         const res = await empresaService.comprarAcciones(empresaId, cant);
         setSuccess(res?.message || "Compra realizada");
         setCantidad("");
@@ -113,6 +121,11 @@ export default function Operar() {
         return;
       }
       try {
+        if (usuarioDeshabilitado) {
+          setError('Cuenta deshabilitada: no puedes realizar ventas');
+          setLoading(false);
+          return;
+        }
         const res = await empresaService.venderAcciones(empresaId, cant);
         setSuccess(res?.message || "Venta realizada");
         setCantidad("");

@@ -2,7 +2,7 @@ import { queryDB } from "../config/db.js";
 import sql from 'mssql';
 import { dbConfig } from '../config/db.js';
 // Duración del bloqueo en minutos (por defecto 1440 = 24h). Se puede ajustar con la variable de entorno BLOQUEO_MINUTOS.
-const BLOQUEO_MINUTOS = Number(process.env.BLOQUEO_MINUTOS) || 1;
+const BLOQUEO_MINUTOS = Number(process.env.BLOQUEO_MINUTOS) || 1440;
 
 export async function getWallet(req, res) {
   const userId = req.user.id;
@@ -73,6 +73,16 @@ export async function getWallet(req, res) {
 export async function recargarWallet(req, res) {
   const userId = req.user.id;
   const { monto } = req.body;
+
+  // Verificar que el usuario esté habilitado
+  try {
+    const { isUserEnabled } = await import('../utils/userHelpers.js');
+    const enabled = await isUserEnabled(userId);
+    if (!enabled) return res.status(403).json({ message: 'Usuario deshabilitado' });
+  } catch (e) {
+    console.error('Error verificando estado usuario:', e);
+    return res.status(500).json({ message: 'Error interno' });
+  }
 
   try {
     // Validar monto
