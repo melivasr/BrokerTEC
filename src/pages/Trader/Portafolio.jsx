@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
-import * as empresaService from "../../services/empresaService";
-import { getWallet } from "../../services/walletService";
+import { getPortafolio, venderAcciones, getWallet } from "../../services/traderService";
 import { getCurrentUser } from "../../services/authService";
 
 export default function Portafolio() {
@@ -28,7 +27,7 @@ export default function Portafolio() {
       setLoading(true);
       setError("");
       try {
-        const data = await empresaService.getPortafolio();
+        const data = await getPortafolio();
         setPosiciones(data.posiciones);
         const w = await getWallet();
         setWallet(w);
@@ -58,10 +57,10 @@ export default function Portafolio() {
       return;
     }
     try {
-      await empresaService.venderAcciones(empresa_id, cantidad);
+      await venderAcciones(empresa_id, cantidad);
       setSuccess("Venta realizada");
       setCantidadVenta({ ...cantidadVenta, [empresa_id]: "" });
-      const data = await empresaService.getPortafolio();
+      const data = await getPortafolio();
       setPosiciones(data.posiciones);
       const w = await getWallet();
       setWallet(w);

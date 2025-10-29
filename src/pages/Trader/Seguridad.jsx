@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import { getCurrentUser } from "../../services/authService";
-import * as empresaService from "../../services/userService";
+import { liquidarTodo, getLastAccessSeguridad, registrarAccesoSeguridad } from "../../services/traderService";
 
 export default function Seguridad() {
   const [user, setUser] = useState(null);
@@ -18,11 +18,11 @@ export default function Seguridad() {
     async function fetchLastAccess() {
       try {
         // Primero obtener el último acceso (anterior)
-        const data = await empresaService.getLastAccessSeguridad();
+        const data = await getLastAccessSeguridad();
         setLastAccess(data.lastAccess);
         
         // Luego registrar el acceso actual (será el "anterior" la próxima vez)
-        await empresaService.registrarAccesoSeguridad();
+        await registrarAccesoSeguridad();
       } catch {
         setLastAccess("");
       }
@@ -39,7 +39,7 @@ export default function Seguridad() {
   setSuccess("");
   setLoading(true);
   try {
-    await empresaService.liquidarTodo({ id: user.id, password });
+    await liquidarTodo({ id: user.id, password });
     setSuccess("Liquidación exitosa. Todas tus posiciones han sido vendidas.");
     setPassword("");
     setConfirming(false);

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 import Sidebar from "../../components/Sidebar";
-import * as empresaService from "../../services/empresaService";
-import { getWallet } from "../../services/walletService";
+import { getDetalleEmpresa, comprarAcciones, venderAcciones, getWallet } from "../../services/traderService";
 import { getCurrentUser } from "../../services/authService";
 
 export default function Operar() {
@@ -27,7 +26,7 @@ export default function Operar() {
           setError("ID de empresa inválido");
           return;
         }
-        const e = await empresaService.getDetalleEmpresa(empresaId);
+        const e = await getDetalleEmpresa(empresaId);
         setEmpresa(e.empresa);
         const w = await getWallet();
         setWallet(w);
@@ -98,10 +97,10 @@ export default function Operar() {
           setLoading(false);
           return;
         }
-        const res = await empresaService.comprarAcciones(empresaId, cant);
+        const res = await comprarAcciones(empresaId, cant);
         setSuccess(res?.message || "Compra realizada");
         setCantidad("");
-        const e = await empresaService.getDetalleEmpresa(empresaId);
+        const e = await getDetalleEmpresa(empresaId);
         setEmpresa(e.empresa);
         const w = await getWallet();
         setWallet(w);
@@ -126,10 +125,10 @@ export default function Operar() {
           setLoading(false);
           return;
         }
-        const res = await empresaService.venderAcciones(empresaId, cant);
+        const res = await venderAcciones(empresaId, cant);
         setSuccess(res?.message || "Venta realizada");
         setCantidad("");
-        const e = await empresaService.getDetalleEmpresa(empresaId);
+        const e = await getDetalleEmpresa(empresaId);
         setEmpresa(e.empresa);
         const w = await getWallet();
         setWallet(w);

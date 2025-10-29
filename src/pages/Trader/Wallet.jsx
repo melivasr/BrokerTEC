@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getWallet, recargarWallet } from "../../services/walletService";
+import { getWallet, recargarWallet } from "../../services/traderService";
 import { getCurrentUser } from "../../services/authService";
 import Sidebar from "../../components/Sidebar";
 

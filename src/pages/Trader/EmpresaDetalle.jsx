@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import * as empresaService from "../../services/empresaService";
+import { getDetalleEmpresa, marcarFavorita } from "../../services/traderService";
 import Sidebar from "../../components/Sidebar";
 import { getCurrentUser } from "../../services/authService";
 
@@ -26,7 +26,7 @@ export default function EmpresaDetalle() {
         return;
       }
       try {
-        const data = await empresaService.getDetalleEmpresa(companyId);
+        const data = await getDetalleEmpresa(companyId);
         // Backend returns { empresa, historico, favorita }
         if (!data || !data.empresa) {
           setError('Empresa no encontrada');
@@ -51,7 +51,7 @@ export default function EmpresaDetalle() {
 
   const handleFavorita = async () => {
     try {
-      const resp = await empresaService.marcarFavorita(companyId);
+      const resp = await marcarFavorita(companyId);
       // resp: { message, favorita }
       if (resp && typeof resp.favorita !== 'undefined') {
         setFavorita(!!resp.favorita);

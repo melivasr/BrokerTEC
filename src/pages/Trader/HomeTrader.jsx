@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import { getCurrentUser } from "../../services/authService";
-import { getHomeTraderData } from "../../services/homeTraderService";
-import { getFavoritas } from "../../services/empresaService";
+import { getHomeTraderData, getFavoritas } from "../../services/traderService";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LabelList } from "recharts";
 
 export default function HomeTrader() {
