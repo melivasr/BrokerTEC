@@ -222,9 +222,9 @@ export default async function createAllTables() {
       END;
     `);
 
-    console.log("✅ Tablas y triggers creados correctamente.");
+    console.log("Tablas y triggers creados correctamente.");
   } catch (err) {
-    console.error("❌ Error creando tablas o triggers:", err);
+    console.error("Error creando tablas o triggers:", err);
     throw err;
   }
 }
