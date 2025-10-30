@@ -3,9 +3,6 @@ import { queryDB } from "../config/db.js";
 export default async function createTriggers() {
   try {
     await queryDB(`
-        DROP TRIGGER IF EXISTS TRG_UpdateUsuarioIdBilletera;
-        DROP TRIGGER IF EXISTS TRG_UpdateUsuarioIdPortafolio;
-        DROP TRIGGER IF EXISTS TRG_UpdateUsuarioAlias;
         DROP TRIGGER IF EXISTS TR_Auditoria_Billetera_Update;
         DROP TRIGGER IF EXISTS TR_Auditoria_Empresa_Delistar;
         DROP TRIGGER IF EXISTS TR_Auditoria_Usuario_Deshabilitar;

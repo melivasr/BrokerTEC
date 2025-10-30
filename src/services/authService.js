@@ -1,5 +1,5 @@
 import axios from "axios";
-const BASE = process.env.REACT_APP_API_URL || 'http://192.168.10.111:4000';
+const BASE = process.env.REACT_APP_API_URL;
 const API_URL = `${BASE}/api/auth`; 
 
 // Registrar usuario
