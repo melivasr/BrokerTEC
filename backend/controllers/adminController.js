@@ -138,37 +138,43 @@ export async function deleteMercado(req, res) {
     const empresasDelistadas = await request.query(`
       SELECT id FROM Empresa WHERE id_mercado = '${id}' AND delistada = 1
     `);
-    
     let empresasEliminadas = 0;
-    
     if (empresasDelistadas.recordset && empresasDelistadas.recordset.length > 0) {
       const empresaIds = empresasDelistadas.recordset.map(e => `'${e.id}'`).join(',');
       
-      // Limpiar referencias en Transaccion
+      //Limpiar referencias en Transaccion 
       await request.query(`
         UPDATE Transaccion 
         SET id_empresa = NULL 
         WHERE id_empresa IN (${empresaIds})
       `);
       
+      // Limpiar favoritas
       await request.query(`
-        UPDATE Transaccion 
-        SET id_portafolio = NULL 
-        WHERE id_portafolio IN (
-          SELECT id FROM Portafolio WHERE id_empresa IN (${empresaIds})
-        )
+        DELETE FROM Empresa_Favorita 
+        WHERE id_empresa IN (${empresaIds})
       `);
       
       // Eliminar empresas
+      // Usuario.id_portafolio se mantiene intacto
       await request.query(`DELETE FROM Empresa WHERE id IN (${empresaIds})`);
       empresasEliminadas = empresasDelistadas.recordset.length;
+      // Limpiar portafolios huérfanos (con id_empresa = NULL y acciones = 0)
+      await request.query(`
+        DELETE FROM Portafolio 
+        WHERE id_empresa IS NULL AND acciones = 0
+      `);
     }
+    // Limpiar mercados habilitados
+    await request.query(`
+      DELETE FROM Mercado_Habilitado 
+      WHERE id_mercado = '${id}'
+    `);
 
     // Eliminar mercado
     await request.query(`DELETE FROM Mercado WHERE id = '${id}'`);
     
     await transaction.commit();
-    
     res.json({ 
       message: empresasEliminadas > 0 
         ? `Mercado eliminado (se eliminaron ${empresasEliminadas} empresa(s) delistada(s))`
@@ -178,8 +184,10 @@ export async function deleteMercado(req, res) {
   } catch (e) {
     try { await transaction.rollback(); } catch (rollbackErr) {}
     console.error('Error al eliminar mercado:', e);
-    res.status(500).json({ message: 'Error al eliminar mercado' });
-  } 
+    res.status(500).json({ message: 'Error al eliminar mercado', error: e.message });
+  } finally {
+    try { pool && pool.close(); } catch (e) {}
+  }
 }
 
 // Empresas (vista admin)

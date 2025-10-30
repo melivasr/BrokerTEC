@@ -40,10 +40,10 @@ export default async function createAllTables() {
     await queryDB(`
       CREATE TABLE Portafolio (
         id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-        id_empresa UNIQUEIDENTIFIER NOT NULL,
+        id_empresa UNIQUEIDENTIFIER NULL,
         acciones INT NOT NULL CHECK (acciones >= 0),
         CONSTRAINT FK_Portafolio_Empresa
-          FOREIGN KEY (id_empresa) REFERENCES Empresa(id) ON DELETE CASCADE 
+          FOREIGN KEY (id_empresa) REFERENCES Empresa(id) ON DELETE SET NULL  
       );
     `);
 
@@ -68,7 +68,6 @@ export default async function createAllTables() {
           ON DELETE SET NULL,
         CONSTRAINT FK_Usuario_Portafolio
           FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
-          ON DELETE SET NULL
       );
     `);
 
@@ -113,9 +112,9 @@ export default async function createAllTables() {
         CONSTRAINT FK_Transaccion_Usuario 
           FOREIGN KEY (alias) REFERENCES Usuario(alias)
           ON UPDATE CASCADE,
-        CONSTRAINT FK_Transaccion_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id),
+        CONSTRAINT FK_Transaccion_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id) ON DELETE SET NULL,
         CONSTRAINT FK_Transaccion_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id),
-        CONSTRAINT FK_Transaccion_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id) 
+        CONSTRAINT FK_Transaccion_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id) ON DELETE SET NULL 
       );
     `);
 
@@ -160,7 +159,6 @@ export default async function createAllTables() {
         PRIMARY KEY (fecha, id_portafolio, id_empresa),
         CONSTRAINT FK_PH_Portafolio
           FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
-          ON DELETE CASCADE
       );
     `);
 
