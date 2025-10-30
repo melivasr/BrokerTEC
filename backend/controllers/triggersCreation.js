@@ -120,43 +120,6 @@ export default async function createTriggers() {
     `);
     console.log('Trigger Precio creado');
 
-    // Triggers de cascada
-    await queryDB(`
-        CREATE TRIGGER TRG_UpdateUsuarioIdBilletera
-        ON Usuario
-        AFTER UPDATE
-        AS
-        BEGIN
-            SET NOCOUNT ON;
-            IF UPDATE(id_billetera)
-            BEGIN
-                UPDATE T
-                SET T.id_billetera = I.id_billetera
-                FROM Transaccion AS T
-                INNER JOIN deleted AS D ON T.alias = D.alias
-                INNER JOIN inserted AS I ON D.id = I.id;
-            END
-        END;
-    `);
-
-    await queryDB(`
-        CREATE TRIGGER TRG_UpdateUsuarioIdPortafolio
-        ON Usuario
-        AFTER UPDATE
-        AS
-        BEGIN
-            SET NOCOUNT ON;
-            IF UPDATE(id_portafolio)
-            BEGIN
-                UPDATE T
-                SET T.id_portafolio = I.id_portafolio
-                FROM Transaccion AS T
-                INNER JOIN deleted AS D ON T.alias = D.alias
-                INNER JOIN inserted AS I ON D.id = I.id;
-            END
-        END;
-    `);
-
     console.log('Todos los triggers creados exitosamente');
 
     await queryDB(`
