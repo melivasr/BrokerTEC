@@ -67,7 +67,7 @@ Una vez se tiene listo este entorno de programas se puede descargar el zip del r
 
 ### Inicializacion de la pagina web.
 
-* Iniciar servidor: en una terminal en el /backend ejecute el comando `node --env-file=.env server.js`
+* Iniciar servidor: en una terminal en el /backend ejecute el comando `npm install` y luego `node --env-file=.env server.js`
 * Luego inicialice una terminal en el directorio BrokerTEC, y corra el comando npm install y luego npm start, esto abrira una ventana en su navegador web con el login para la pagina.
 * Si desea abrir mas ventanas de la pagina web, puede hacerlo al escribir en el buscador [http://localhost:3000](http://localhost:3000).
 
