@@ -18,6 +18,8 @@ servers:
         enum: [mock, staging, prod]
 
 tags:
+  - name: System
+    description: Salud/estado del servicio
   - name: Auth
     description: Autenticación y manejo de tokens
   - name: Profile
@@ -28,8 +30,6 @@ tags:
     description: Administración de catálogos y usuarios
   - name: Analyst
     description: Reportes y estadísticas
-  - name: System
-    description: Salud/estado del servicio
 
 components:
   securitySchemes:
@@ -40,151 +40,151 @@ components:
 
   headers:
     X-Correlation-Id:
-      description: Id de correlación para trazabilidad.
-      schema:
-        type: string
-        format: uuid
+      description: Id de correlación para trazabilidad (eco en respuesta).
+      schema: { type: string, format: uuid }
+    traceparent:
+      description: Cabecera W3C Trace Context entrante para trazabilidad distribuida.
+      schema: { type: string }
     Idempotency-Key:
       description: Clave única para reintentos seguros de la misma operación.
       schema:
         type: string
         minLength: 10
         maxLength: 128
+    RateLimit-Limit:
+      description: Límite de peticiones del período actual.
+      schema: { type: integer, minimum: 1 }
+    RateLimit-Remaining:
+      description: Peticiones restantes en el período actual.
+      schema: { type: integer, minimum: 0 }
+    RateLimit-Reset:
+      description: Epoch (segundos) cuando se reinicia la ventana.
+      schema: { type: integer, minimum: 0 }
+    Retry-After:
+      description: Segundos a esperar antes de reintentar (429/409).
+      schema: { type: integer, minimum: 1 }
 
   parameters:
     Limit:
       in: query
       name: limit
-      schema:
-        type: integer
-        minimum: 1
-        maximum: 200
-        default: 20
+      schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
     Offset:
       in: query
       name: offset
-      schema:
-        type: integer
-        minimum: 0
-        default: 0
+      schema: { type: integer, minimum: 0, default: 0 }
     From:
       in: query
       name: from
       description: Fecha/hora inicio (ISO-8601, UTC)
-      schema:
-        type: string
-        format: date-time
+      schema: { type: string, format: date-time }
     To:
       in: query
       name: to
       description: Fecha/hora fin (ISO-8601, UTC)
-      schema:
-        type: string
-        format: date-time
+      schema: { type: string, format: date-time }
 
   responses:
+    Ok:
+      description: OK
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+        RateLimit-Limit:    { $ref: '#/components/headers/RateLimit-Limit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimit-Remaining' }
+        RateLimit-Reset:    { $ref: '#/components/headers/RateLimit-Reset' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/OkRes' }
+
     BadRequest:
       description: Datos inválidos
       headers:
-        X-Correlation-Id:
-          $ref: '#/components/headers/X-Correlation-Id'
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorRes'
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
     Unauthorized:
       description: No autenticado
       headers:
-        X-Correlation-Id:
-          $ref: '#/components/headers/X-Correlation-Id'
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorRes'
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
     Forbidden:
       description: Rol/permiso insuficiente
       headers:
-        X-Correlation-Id:
-          $ref: '#/components/headers/X-Correlation-Id'
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorRes'
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
     NotFound:
       description: Recurso no encontrado
       headers:
-        X-Correlation-Id:
-          $ref: '#/components/headers/X-Correlation-Id'
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorRes'
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
     Conflict:
       description: Conflicto de estado (precio/inventario/etc.)
       headers:
-        X-Correlation-Id:
-          $ref: '#/components/headers/X-Correlation-Id'
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+        Retry-After:      { $ref: '#/components/headers/Retry-After' }
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorRes'
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
     Unprocessable:
       description: Validación de negocio fina falló
       headers:
-        X-Correlation-Id:
-          $ref: '#/components/headers/X-Correlation-Id'
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorRes'
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
     TooManyRequests:
       description: Límite de peticiones alcanzado
       headers:
-        X-Correlation-Id:
-          $ref: '#/components/headers/X-Correlation-Id'
+        X-Correlation-Id:   { $ref: '#/components/headers/X-Correlation-Id' }
+        RateLimit-Limit:    { $ref: '#/components/headers/RateLimit-Limit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimit-Remaining' }
+        RateLimit-Reset:    { $ref: '#/components/headers/RateLimit-Reset' }
+        Retry-After:        { $ref: '#/components/headers/Retry-After' }
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorRes'
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
     InternalError:
       description: Error inesperado
       headers:
-        X-Correlation-Id:
-          $ref: '#/components/headers/X-Correlation-Id'
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/ErrorRes'
+          schema: { $ref: '#/components/schemas/ErrorRes' }
 
   schemas:
     OkRes:
       type: object
       required: [ok, data]
       properties:
-        ok:
-          type: boolean
-          const: true
+        ok: { type: boolean, const: true }
         data: {}
 
     ErrorRes:
       type: object
       required: [ok, error]
       properties:
-        ok:
-          type: boolean
-          const: false
+        ok: { type: boolean, const: false }
         error:
           type: object
           required: [code, message]
           properties:
-            code:
-              type: string
-              description: Código de error estable
-            message:
-              type: string
-            traceId:
-              type: string
-              format: uuid
+            code: { type: string, description: Código de error estable }
+            message: { type: string }
+            traceId: { type: string, format: uuid }
 
     Money:
       type: object
@@ -195,27 +195,20 @@ components:
           pattern: '^-?\d+(\.\d{1,4})?$'
           example: "12345.67"
           description: Decimal como string (evita binario)
-        currency:
-          type: string
-          example: CRC
+        currency: { type: string, example: USD }
 
     Pagination:
       type: object
       properties:
-        limit:
-          type: integer
-        offset:
-          type: integer
-        total:
-          type: integer
+        limit: { type: integer }
+        offset: { type: integer }
+        total: { type: integer }
 
     User:
       type: object
       properties:
-        id:
-          type: string
-        alias:
-          type: string
+        id: { type: string }
+        alias: { type: string }
         role:
           type: string
           enum: [ADMIN, TRADER, ANALYST]
@@ -225,170 +218,106 @@ components:
           default: ACTIVE
         markets:
           type: array
-          items:
-            type: string
+          items: { type: string }
 
     Profile:
       type: object
       properties:
-        fullName:
-          type: string
-        email:
-          type: string
-          format: email
-        phone:
-          type: string
-        country:
-          type: string
-        address:
-          type: string
+        fullName: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        country: { type: string }
+        address: { type: string }
 
     Wallet:
       type: object
       properties:
-        balance:
-          $ref: '#/components/schemas/Money'
+        balance: { $ref: '#/components/schemas/Money' }
         category:
           type: string
           enum: [JUNIOR, MID, SENIOR]
-        dailyLimit:
-          $ref: '#/components/schemas/Money'
-        dailyConsumed:
-          $ref: '#/components/schemas/Money'
+        dailyLimit: { $ref: '#/components/schemas/Money' }
+        dailyConsumed: { $ref: '#/components/schemas/Money' }
 
     TopUp:
       type: object
       properties:
-        id:
-          type: string
-        amount:
-          $ref: '#/components/schemas/Money'
-        ts:
-          type: string
-          format: date-time
+        id: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+        ts: { type: string, format: date-time }
 
     Market:
       type: object
       properties:
-        id:
-          type: string
-        name:
-          type: string
-        enabled:
-          type: boolean
+        id: { type: string }
+        name: { type: string }
+        enabled: { type: boolean }
 
     Company:
       type: object
       properties:
-        id:
-          type: string
-        name:
-          type: string
-        marketId:
-          type: string
-        totalShares:
-          type: integer
-          minimum: 0
-        currentPrice:
-          $ref: '#/components/schemas/Money'
-        marketCap:
-          $ref: '#/components/schemas/Money'
-        listed:
-          type: boolean
-          default: true
+        id: { type: string }
+        name: { type: string }
+        marketId: { type: string }
+        totalShares: { type: integer, minimum: 0 }
+        currentPrice: { $ref: '#/components/schemas/Money' }
+        marketCap: { $ref: '#/components/schemas/Money' }
+        listed: { type: boolean, default: true }
 
     Price:
       type: object
       properties:
-        companyId:
-          type: string
-        price:
-          $ref: '#/components/schemas/Money'
-        ts:
-          type: string
-          format: date-time
+        companyId: { type: string }
+        price: { $ref: '#/components/schemas/Money' }
+        ts: { type: string, format: date-time }
 
     Position:
       type: object
       properties:
-        companyId:
-          type: string
-        qty:
-          type: integer
-          minimum: 0
-        avgCost:
-          $ref: '#/components/schemas/Money'
+        companyId: { type: string }
+        qty: { type: integer, minimum: 0 }
+        avgCost: { $ref: '#/components/schemas/Money' }
 
     Trade:
       type: object
       properties:
-        id:
-          type: string
-        alias:
-          type: string
-          description: Trader que ejecuta
+        id: { type: string }
+        alias: { type: string, description: Trader que ejecuta }
         side:
           type: string
           enum: [BUY, SELL]
-        companyId:
-          type: string
-        qty:
-          type: integer
-          minimum: 1
-        executedPrice:
-          $ref: '#/components/schemas/Money'
-        ts:
-          type: string
-          format: date-time
+        companyId: { type: string }
+        qty: { type: integer, minimum: 1 }
+        executedPrice: { $ref: '#/components/schemas/Money' }
+        ts: { type: string, format: date-time }
 
     PortfolioItem:
       type: object
       properties:
-        companyId:
-          type: string
-        marketId:
-          type: string
-        qty:
-          type: integer
-          minimum: 0
-        avgCost:
-          $ref: '#/components/schemas/Money'
-        currentPrice:
-          $ref: '#/components/schemas/Money'
-        currentValue:
-          $ref: '#/components/schemas/Money'
+        companyId: { type: string }
+        marketId: { type: string }
+        qty: { type: integer, minimum: 0 }
+        avgCost: { $ref: '#/components/schemas/Money' }
+        currentPrice: { $ref: '#/components/schemas/Money' }
+        currentValue: { $ref: '#/components/schemas/Money' }
 
     AuditEvent:
       type: object
       properties:
-        id:
-          type: string
-        actorAlias:
-          type: string
-        action:
-          type: string
-        entity:
-          type: string
-        entityId:
-          type: string
+        id: { type: string }
+        actorAlias: { type: string }
+        action: { type: string }
+        entity: { type: string }
+        entityId: { type: string }
         payload: {}
-        ts:
-          type: string
-          format: date-time
+        ts: { type: string, format: date-time }
 
     StatsHoldingsRow:
       type: object
       properties:
-        key:
-          type: string
-        pctTraders:
-          type: number
-          minimum: 0
-          maximum: 100
-        pctAdmin:
-          type: number
-          minimum: 0
-          maximum: 100
+        key: { type: string }
+        pctTraders: { type: number, minimum: 0, maximum: 100 }
+        pctAdmin: { type: number, minimum: 0, maximum: 100 }
 
     StatsHoldings:
       type: object
@@ -398,8 +327,7 @@ components:
           enum: [market, company]
         rows:
           type: array
-          items:
-            $ref: '#/components/schemas/StatsHoldingsRow'
+          items: { $ref: '#/components/schemas/StatsHoldingsRow' }
 
 security:
   - bearerAuth: []
@@ -411,17 +339,24 @@ paths:
       tags: [System]
       operationId: health
       summary: Estado básico del servicio
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
         "200":
           description: OK
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  status:
-                    type: string
-                    enum: [ok]
+                  status: { type: string, enum: [ok] }
 
   /auth/login:
     post:
@@ -429,6 +364,13 @@ paths:
       tags: [Auth]
       operationId: authLogin
       summary: Iniciar sesión
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -437,36 +379,12 @@ paths:
               type: object
               required: [alias, password]
               properties:
-                alias:
-                  type: string
-                  minLength: 3
-                  maxLength: 50
-                password:
-                  type: string
-                  minLength: 8
-                  maxLength: 100
+                alias: { type: string, minLength: 3, maxLength: 50 }
+                password: { type: string, minLength: 8, maxLength: 100 }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/OkRes'
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          token:
-                            type: string
-                          role:
-                            type: string
-                            enum: [ADMIN, TRADER, ANALYST]
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
 
   /auth/refresh:
     post:
@@ -474,6 +392,13 @@ paths:
       tags: [Auth]
       operationId: authRefresh
       summary: Renovar token de acceso
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -482,77 +407,60 @@ paths:
               type: object
               required: [refreshToken]
               properties:
-                refreshToken:
-                  type: string
+                refreshToken: { type: string }
       responses:
-        "200":
-          description: Token renovado
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/OkRes'
-                  - type: object
-                    properties:
-                      data:
-                        type: object
-                        properties:
-                          token:
-                            type: string
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
 
   /me/profile:
     get:
       tags: [Profile]
       operationId: meGetProfile
       summary: Obtener perfil propio
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          headers:
-            X-Correlation-Id:
-              $ref: '#/components/headers/X-Correlation-Id'
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/OkRes'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/Profile'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
     put:
       tags: [Profile]
       operationId: meUpdateProfile
       summary: Actualizar perfil propio
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/Profile'
+            schema: { $ref: '#/components/schemas/Profile' }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
 
   /me/change-password:
     post:
       tags: [Profile]
       operationId: meChangePassword
       summary: Cambiar contraseña (requiere password actual)
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -561,25 +469,13 @@ paths:
               type: object
               required: [currentPassword, newPassword]
               properties:
-                currentPassword:
-                  type: string
-                  minLength: 8
-                newPassword:
-                  type: string
-                  minLength: 8
+                currentPassword: { type: string, minLength: 8 }
+                newPassword: { type: string, minLength: 8 }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "422":
-          $ref: '#/components/responses/Unprocessable'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "422": { $ref: '#/components/responses/Unprocessable' }
 
   /trader/home:
     get:
@@ -590,54 +486,19 @@ paths:
         - in: query
           name: marketId
           required: true
-          schema:
-            type: string
+          schema: { type: string }
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [ok, data]
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            id:
-                              type: string
-                            name:
-                              type: string
-                            marketId:
-                              type: string
-                            totalShares:
-                              type: integer
-                              minimum: 0
-                            currentPrice:
-                              $ref: '#/components/schemas/Money'
-                            marketCap:
-                              $ref: '#/components/schemas/Money'
-                            changePct:
-                              type: number
-                      page:
-                        $ref: '#/components/schemas/Pagination'
-                      updatedAt:
-                        type: string
-                        format: date-time
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
 
   /trader/company/{companyId}:
     get:
@@ -648,39 +509,19 @@ paths:
         - in: path
           name: companyId
           required: true
-          schema:
-            type: string
+          schema: { type: string }
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      company:
-                        $ref: '#/components/schemas/Company'
-                      priceHistory:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Price'
-                      treasuryInventory:
-                        type: integer
-                        minimum: 0
-                      topHolderAlias:
-                        type: string
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "404":
-          $ref: '#/components/responses/NotFound'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
 
   /trader/operate/buy:
     post:
@@ -690,9 +531,14 @@ paths:
       parameters:
         - in: header
           name: Idempotency-Key
-          required: false
-          schema:
-            type: string
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -701,35 +547,14 @@ paths:
               type: object
               required: [companyId, qty]
               properties:
-                companyId:
-                  type: string
-                qty:
-                  type: integer
-                  minimum: 1
+                companyId: { type: string }
+                qty: { type: integer, minimum: 1 }
       responses:
-        "200":
-          description: Ejecutado
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      trade:
-                        $ref: '#/components/schemas/Trade'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "409":
-          $ref: '#/components/responses/Conflict'
-        "422":
-          $ref: '#/components/responses/Unprocessable'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "422": { $ref: '#/components/responses/Unprocessable' }
 
   /trader/operate/sell:
     post:
@@ -739,8 +564,14 @@ paths:
       parameters:
         - in: header
           name: Idempotency-Key
-          schema:
-            type: string
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -749,55 +580,30 @@ paths:
               type: object
               required: [companyId, qty]
               properties:
-                companyId:
-                  type: string
-                qty:
-                  type: integer
-                  minimum: 1
+                companyId: { type: string }
+                qty: { type: integer, minimum: 1 }
       responses:
-        "200":
-          description: Ejecutado
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      trade:
-                        $ref: '#/components/schemas/Trade'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "409":
-          $ref: '#/components/responses/Conflict'
-        "422":
-          $ref: '#/components/responses/Unprocessable'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "422": { $ref: '#/components/responses/Unprocessable' }
 
   /trader/wallet:
     get:
       tags: [Trader]
       operationId: traderGetWallet
       summary: Ver estado de wallet
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/OkRes'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/Wallet'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
 
   /trader/wallet/topup:
     post:
@@ -807,8 +613,14 @@ paths:
       parameters:
         - in: header
           name: Idempotency-Key
-          schema:
-            type: string
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -817,32 +629,12 @@ paths:
               type: object
               required: [amount]
               properties:
-                amount:
-                  $ref: '#/components/schemas/Money'
+                amount: { $ref: '#/components/schemas/Money' }
       responses:
-        "200":
-          description: Recarga aplicada
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      topup:
-                        $ref: '#/components/schemas/TopUp'
-                      wallet:
-                        $ref: '#/components/schemas/Wallet'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "409":
-          $ref: '#/components/responses/Conflict'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "409": { $ref: '#/components/responses/Conflict' }
 
   /trader/wallet/topups:
     get:
@@ -854,56 +646,31 @@ paths:
         - $ref: '#/components/parameters/To'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/TopUp'
-                      page:
-                        $ref: '#/components/schemas/Pagination'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
 
   /trader/portfolio:
     get:
       tags: [Trader]
       operationId: traderPortfolio
       summary: Ver portafolio
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/PortfolioItem'
-                      totalValue:
-                        $ref: '#/components/schemas/Money'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
 
   /trader/security/liquidate-all:
     post:
@@ -913,8 +680,14 @@ paths:
       parameters:
         - in: header
           name: Idempotency-Key
-          schema:
-            type: string
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -923,271 +696,224 @@ paths:
               type: object
               required: [password]
               properties:
-                password:
-                  type: string
-                  minLength: 8
+                password: { type: string, minLength: 8 }
       responses:
-        "200":
-          description: Portafolio liquidado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "409":
-          $ref: '#/components/responses/Conflict'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "409": { $ref: '#/components/responses/Conflict' }
 
   /admin/markets:
     get:
       tags: [Admin]
       operationId: adminListMarkets
       summary: Listar mercados
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Market'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Admin]
-      operationId: adminCreateMarket
+      operationId: adminCreateMercado
       summary: Crear mercado
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/Market'
+            schema: { $ref: '#/components/schemas/Market' }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   /admin/markets/{id}:
     get:
       tags: [Admin]
-      operationId: adminGetMarket
+      operationId: adminGetMercados
       summary: Obtener mercado
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    $ref: '#/components/schemas/Market'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "404":
-          $ref: '#/components/responses/NotFound'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
     put:
       tags: [Admin]
-      operationId: adminUpdateMarket
+      operationId: adminUpdateMercado
       summary: Actualizar mercado
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/Market'
+            schema: { $ref: '#/components/schemas/Market' }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "404":
-          $ref: '#/components/responses/NotFound'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
     delete:
       tags: [Admin]
-      operationId: adminDeleteMarket
+      operationId: adminDeleteMercado
       summary: Eliminar mercado
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "404":
-          $ref: '#/components/responses/NotFound'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
 
   /admin/companies:
     get:
       tags: [Admin]
       operationId: adminListCompanies
       summary: Listar empresas
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Company'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Admin]
-      operationId: adminCreateCompany
+      operationId: createEmpresaAdmin
       summary: Crear empresa
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/Company'
+            schema: { $ref: '#/components/schemas/Company' }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   /admin/companies/{id}:
     get:
       tags: [Admin]
-      operationId: adminGetCompany
+      operationId: getEmpresasAdmin
       summary: Obtener empresa
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    $ref: '#/components/schemas/Company'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "404":
-          $ref: '#/components/responses/NotFound'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
     put:
       tags: [Admin]
-      operationId: adminUpdateCompany
+      operationId: updateEmpresa
       summary: Actualizar empresa
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/Company'
+            schema: { $ref: '#/components/schemas/Company' }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "404":
-          $ref: '#/components/responses/NotFound'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
     delete:
       tags: [Admin]
       operationId: adminDeleteCompany
@@ -1196,37 +922,43 @@ paths:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "404":
-          $ref: '#/components/responses/NotFound'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
 
   /admin/companies/{id}/delist:
     post:
       tags: [Admin]
-      operationId: adminDelistCompany
+      operationId: delistarEmpresa
       summary: Delistar empresa (liquida posiciones y audita)
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
         - in: header
           name: Idempotency-Key
-          schema:
-            type: string
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -1235,24 +967,14 @@ paths:
               type: object
               required: [reason]
               properties:
-                reason:
-                  type: string
-                  minLength: 5
+                reason: { type: string, minLength: 5 }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "409":
-          $ref: '#/components/responses/Conflict'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { $ref: '#/components/responses/Conflict' }
 
-  /admin/companies/{id}/price:
+  /admin/companies/{id}/cargar-precio:
     post:
       tags: [Admin]
       operationId: adminSetPrice
@@ -1261,8 +983,17 @@ paths:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -1271,26 +1002,15 @@ paths:
               type: object
               required: [price]
               properties:
-                price:
-                  $ref: '#/components/schemas/Money'
-                ts:
-                  type: string
-                  format: date-time
+                price: { $ref: '#/components/schemas/Money' }
+                ts: { type: string, format: date-time }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
-  /admin/companies/{id}/prices:
+  /admin/companies/{id}/historial-precio:
     get:
       tags: [Admin]
       operationId: adminListPrices
@@ -1299,149 +1019,114 @@ paths:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Price'
-                      page:
-                        $ref: '#/components/schemas/Pagination'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+      # 401/403 implícitos si aplica
 
   /admin/users:
     get:
       tags: [Admin]
       operationId: adminListUsers
       summary: Listar usuarios
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/User'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
     post:
       tags: [Admin]
-      operationId: adminCreateUser
+      operationId: createUsuario
       summary: Crear usuario
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/User'
+            schema: { $ref: '#/components/schemas/User' }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   /admin/users/{id}:
     get:
       tags: [Admin]
-      operationId: adminGetUser
+      operationId: getUsuarios
       summary: Obtener usuario
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    $ref: '#/components/schemas/User'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "404":
-          $ref: '#/components/responses/NotFound'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
     put:
       tags: [Admin]
-      operationId: adminUpdateUser
+      operationId: updateUsuarioAdmin
       summary: Actualizar usuario (rol, mercados habilitados, etc.)
       parameters:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/User'
+            schema: { $ref: '#/components/schemas/User' }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "404":
-          $ref: '#/components/responses/NotFound'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
 
   /admin/users/{id}/disable:
     post:
@@ -1452,12 +1137,17 @@ paths:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
         - in: header
           name: Idempotency-Key
-          schema:
-            type: string
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -1466,22 +1156,12 @@ paths:
               type: object
               required: [reason]
               properties:
-                reason:
-                  type: string
-                  minLength: 5
+                reason: { type: string, minLength: 5 }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "409":
-          $ref: '#/components/responses/Conflict'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { $ref: '#/components/responses/Conflict' }
 
   /admin/users/{id}/wallet:
     get:
@@ -1492,27 +1172,18 @@ paths:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    $ref: '#/components/schemas/Wallet'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
-        "404":
-          $ref: '#/components/responses/NotFound'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
     put:
       tags: [Admin]
       operationId: adminUpdateUserWallet
@@ -1521,27 +1192,27 @@ paths:
         - in: path
           name: id
           required: true
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/Wallet'
+            schema: { $ref: '#/components/schemas/Wallet' }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OkRes'
-        "400":
-          $ref: '#/components/responses/BadRequest'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   /admin/reports/top-traders:
     get:
@@ -1551,37 +1222,16 @@ paths:
       parameters:
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          type: object
-                          properties:
-                            alias:
-                              type: string
-                            wallet:
-                              $ref: '#/components/schemas/Money'
-                            portfolioValue:
-                              $ref: '#/components/schemas/Money'
-                      page:
-                        $ref: '#/components/schemas/Pagination'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   /analyst/reports/company/{companyId}/trades:
     get:
@@ -1592,41 +1242,21 @@ paths:
         - in: path
           name: companyId
           required: true
-          schema:
-            type: string
+          schema: { type: string }
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Trade'
-                      topHolderAlias:
-                        type: string
-                      treasuryInventory:
-                        type: integer
-                        minimum: 0
-                      page:
-                        $ref: '#/components/schemas/Pagination'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   /analyst/reports/user/{alias}/trades:
     get:
@@ -1637,36 +1267,21 @@ paths:
         - in: path
           name: alias
           required: true
-          schema:
-            type: string
+          schema: { type: string }
         - $ref: '#/components/parameters/From'
         - $ref: '#/components/parameters/To'
         - $ref: '#/components/parameters/Limit'
         - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    type: object
-                    properties:
-                      items:
-                        type: array
-                        items:
-                          $ref: '#/components/schemas/Trade'
-                      page:
-                        $ref: '#/components/schemas/Pagination'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
 
   /analyst/reports/holdings:
     get:
@@ -1677,31 +1292,21 @@ paths:
         - in: query
           name: scope
           required: true
-          schema:
-            type: string
-            enum: [market, company]
+          schema: { type: string, enum: [market, company] }
         - in: query
           name: marketId
-          schema:
-            type: string
+          schema: { type: string }
         - in: query
           name: companyId
-          schema:
-            type: string
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
       responses:
-        "200":
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  data:
-                    $ref: '#/components/schemas/StatsHoldings'
-        "401":
-          $ref: '#/components/responses/Unauthorized'
-        "403":
-          $ref: '#/components/responses/Forbidden'
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+

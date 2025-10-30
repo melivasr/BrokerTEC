@@ -4,10 +4,11 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "lint:api": "redocly lint docs/openapi.yaml",
     "preview:api": "redocly preview-docs docs/openapi.yaml",
-    "mock:api": "prism mock docs/openapi.yaml -p 4010"
+    "mock:api": "prism mock docs/openapi.yaml -p 4010",
+    "build:api": "redocly build-docs docs/openapi.yaml -o public/api.html --title=\"BrokerTEC API\"",
+    "rebuild:api": "npm run lint:api && npm run build:api"
   },
   "keywords": [],
   "author": "",
