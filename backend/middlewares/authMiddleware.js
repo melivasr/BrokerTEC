@@ -16,11 +16,8 @@ export function verifyToken(req, res, next) {
   });
 }
 
-/**
- * Middleware para verificar que el usuario tiene uno de los roles especificados
- * @param {...string} rolesPermitidos - Roles permitidos (ej: 'Admin', 'Trader', 'Analista')
- * @returns {Function} Middleware function
- */
+// Middleware para verificar que el usuario tiene uno de los roles especificados
+// Roles permitidos (ej: 'Admin', 'Trader', 'Analista')
 export function verifyRole(...rolesPermitidos) {
   return (req, res, next) => {
     if (!req.user) {
@@ -40,11 +37,7 @@ export function verifyRole(...rolesPermitidos) {
   };
 }
 
-/**
- * Middleware para validar que el usuario tiene una billetera asociada
- * Almacena el ID de la billetera en req.userBilletera para uso posterior
- * Uso: router.use(verifyToken); router.use(verifyBilleterable);
- */
+// Middleware para validar que el usuario tiene una billetera asociada
 export async function verifyBilleterable(req, res, next) {
   try {
     const userId = req.user?.id;
