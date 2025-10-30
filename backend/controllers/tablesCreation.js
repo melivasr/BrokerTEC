@@ -13,15 +13,17 @@ export default async function createAllTables() {
     await queryDB(`
       CREATE TABLE Empresa (
         id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
-        id_mercado UNIQUEIDENTIFIER NOT NULL,
+        id_mercado UNIQUEIDENTIFIER NULL,
         nombre NVARCHAR(160) NOT NULL,
         ticker CHAR(6) NOT NULL,
         delistada BIT NOT NULL DEFAULT 0,
         CONSTRAINT FK_Empresa_Mercado
           FOREIGN KEY (id_mercado) REFERENCES Mercado(id)
+          ON DELETE SET NULL  
       );
       CREATE UNIQUE INDEX UQ_Empresa_Ticker
-        ON Empresa(id_mercado, ticker);
+        ON Empresa(id_mercado, ticker)
+        WHERE id_mercado IS NOT NULL;
     `);
 
     await queryDB(`
@@ -41,7 +43,7 @@ export default async function createAllTables() {
         id_empresa UNIQUEIDENTIFIER NOT NULL,
         acciones INT NOT NULL CHECK (acciones >= 0),
         CONSTRAINT FK_Portafolio_Empresa
-          FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+          FOREIGN KEY (id_empresa) REFERENCES Empresa(id) ON DELETE CASCADE 
       );
     `);
 
@@ -101,9 +103,9 @@ export default async function createAllTables() {
       CREATE TABLE Transaccion (
         id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
         alias NVARCHAR(40) NOT NULL,
-        id_portafolio UNIQUEIDENTIFIER NOT NULL,
+        id_portafolio UNIQUEIDENTIFIER NULL,
         id_billetera UNIQUEIDENTIFIER NOT NULL,
-        id_empresa UNIQUEIDENTIFIER NOT NULL,
+        id_empresa UNIQUEIDENTIFIER NULL,
         tipo NVARCHAR(10) NOT NULL CHECK (tipo IN ('Compra','Venta')),
         precio DECIMAL(19,4) NOT NULL CHECK (precio > 0),
         cantidad INT NOT NULL CHECK (cantidad > 0),
@@ -113,7 +115,7 @@ export default async function createAllTables() {
           ON UPDATE CASCADE,
         CONSTRAINT FK_Transaccion_Portafolio FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id),
         CONSTRAINT FK_Transaccion_Billetera FOREIGN KEY (id_billetera) REFERENCES Billetera(id),
-        CONSTRAINT FK_Transaccion_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
+        CONSTRAINT FK_Transaccion_Empresa FOREIGN KEY (id_empresa) REFERENCES Empresa(id) 
       );
     `);
 
@@ -158,9 +160,6 @@ export default async function createAllTables() {
         PRIMARY KEY (fecha, id_portafolio, id_empresa),
         CONSTRAINT FK_PH_Portafolio
           FOREIGN KEY (id_portafolio) REFERENCES Portafolio(id)
-          ON DELETE CASCADE,
-        CONSTRAINT FK_PH_Empresa
-          FOREIGN KEY (id_empresa) REFERENCES Empresa(id)
           ON DELETE CASCADE
       );
     `);
@@ -189,6 +188,7 @@ export default async function createAllTables() {
         detalles NVARCHAR(500) NULL
       );
     `);
+
 
     console.log("Tablas creadas correctamente.");
 

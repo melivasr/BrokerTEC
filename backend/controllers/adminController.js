@@ -99,13 +99,12 @@ export async function updateMercado(req, res) {
     res.status(500).json({ message: 'Error al actualizar mercado' });
   }
 }
-
 export async function deleteMercado(req, res) {
   const { id } = req.params;
   if (!isGuid(id)) return res.status(400).json({ message: 'ID inválido' });
   
   try {
-    // Verificar si hay empresas ACTIVAS 
+    // Verificar empresas activas
     const empresasActivas = await queryDB(
       `SELECT COUNT(*) as total FROM Empresa WHERE id_mercado = @id AND (delistada = 0 OR delistada IS NULL)`,
       { id }
@@ -115,23 +114,35 @@ export async function deleteMercado(req, res) {
         message: `No se puede eliminar: hay ${empresasActivas[0].total} empresa(s) activa(s). Debe delistarlas primero.` 
       });
     }
-    // Eliminar empresas delistadas del mercado primero
+    // Obtener empresas delistadas
     const empresasDelistadas = await queryDB(
-      `SELECT COUNT(*) as total FROM Empresa WHERE id_mercado = @id AND delistada = 1`,
+      `SELECT id FROM Empresa WHERE id_mercado = @id AND delistada = 1`,
       { id }
     );
-    if (empresasDelistadas[0].total > 0) {
-      // Eliminar empresas delistadas
-      await queryDB(
-        `DELETE FROM Empresa WHERE id_mercado = @id AND delistada = 1`,
-        { id }
-      );
+    if (empresasDelistadas.length > 0) {
+      const empresaIds = empresasDelistadas.map(e => `'${e.id}'`).join(',');
+      
+      await queryDB(`
+        UPDATE Transaccion 
+        SET id_empresa = NULL 
+        WHERE id_empresa IN (${empresaIds})
+      `);
+      
+      await queryDB(`
+        UPDATE Transaccion 
+        SET id_portafolio = NULL 
+        WHERE id_portafolio IN (
+          SELECT id FROM Portafolio WHERE id_empresa IN (${empresaIds})
+        )
+      `);
+      await queryDB(`DELETE FROM Empresa WHERE id IN (${empresaIds})`);
     }
-    // Ahora eliminar el mercado 
+    // Eliminar mercado
     await queryDB(`DELETE FROM Mercado WHERE id = @id`, { id });
+    
     res.json({ 
-      message: empresasDelistadas[0].total > 0 
-        ? `Mercado eliminado (se eliminaron ${empresasDelistadas[0].total} empresa(s) delistada(s))`
+      message: empresasDelistadas.length > 0 
+        ? `Mercado eliminado (se eliminaron ${empresasDelistadas.length} empresa(s) delistada(s))`
         : 'Mercado eliminado' 
     });
   } catch (e) {
