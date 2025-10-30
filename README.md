@@ -2,105 +2,6 @@
 
 BrokerTEC es una aplicación web que permite a usuarios comercian en la bolsa de valores. Más información en [el enunciado](Proyectos_CE_3101_S2_2025_Proyecto_1.pdf)
 
-## Backend
-
-Para correr el backend, se necesita `nodejs`. Para la base de datos, se necesita `docker` (o `podman`) y `docker-compose` (o `podman-compose`) si se corre en linux.
-
-Configure `docker` o `podman`. Luego de clonar e ingresar al repositorio, inicialize la base de datos:
-
-```
-docker compose down -v && docker compose up --build
-```
-
-En windows, con SQL Server Studio, crear base de datos `BrokerTec` y usar [schema.sql](db/schema.sql) y [seed.sql](db/seed.sql) para generar datos semilla.
-
-Luego inicie el servidor con `nodejs`:
-
-```
-cd backend
-node server.js
-```
-
-# Frontend
-
-# Getting Started with Create React App
-
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
-
-## Available Scripts
-
-In the project directory, you can run:
-
-### `npm start`
-
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
-
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
-
-
-
-
-
-
-Para poder correr el proyecto primero se deben tener instalados ciertos programas.\
-
 ## Requisitos previos.
 1. Para correr la base de datos es necesario tener el Microsoft SQL Server, ya que los querys están pensados para este programa: [https://www.microsoft.com/es-es/sql-server/sql-server-downloads](https://www.microsoft.com/es-es/sql-server/sql-server-downloads) (se recomienda descargar el SQL Server 2022 Developer).
 	* Se recomienda instalar el SQL Server Management Studio (SSMS) el cual posee una interfaz muy amigable para ver la base de datos.
@@ -112,10 +13,21 @@ Para poder correr el proyecto primero se deben tener instalados ciertos programa
 
 3. Instalar algún editor de código, por ejemplo vscode: [https://code.visualstudio.com](https://code.visualstudio.com)
 
-## Inicializacion de la pagina web.
+## Backend
+
+# Linux
+Para correr el backend, se necesita `nodejs`. Para la base de datos, se necesita `docker` (o `podman`) y `docker-compose` (o `podman-compose`) si se corre en linux.
+
+Configure `docker` o `podman`. Luego de clonar e ingresar al repositorio, inicialize la base de datos:
+
+```
+docker compose down -v && docker compose up --build
+```
+
+# Windows
 Una vez se tiene listo este entorno de programas se puede descargar el zip del repositorio de GitHub: [https://github.com/melivasr/BrokerTEC](https://github.com/melivasr/BrokerTEC) \
-Abra la carpeta del archivo en el editor de codigo, vscode en este caso. \
-En la parte de backend modifique el archivo .env de ejemplo con sus datos de servidor de Microsoft SQL Server:
+* Abra la carpeta del archivo en el editor de codigo, vscode en este caso. \
+* En la parte de backend modifique el archivo .env de ejemplo con sus datos de servidor de Microsoft SQL Server:
 ```
 	DB_USER=<Login>
 	DB_PASS=<Password>
@@ -124,11 +36,14 @@ En la parte de backend modifique el archivo .env de ejemplo con sus datos de ser
 	JWT_SECRET=<define_un_token_secreto>
 	PORT=4000 #Puerto donde correrá el servidor backend por defecto 4000
 ``` 
-Crear tablas para la base de datos: en una terminal en el /backend ejecute el comando node --env-file=.env runTablesCreation.js \
-Poblar tablas con datos: en una terminal en el /backend ejecute el comando node --env-file=.env runSeed.js
-Iniciar servidor: en una terminal en el /backend ejecute el comando node --env-file=.env server.js \
-Luego inicialice una terminal en el directorio BrokerTEC, y corra el comando npm install y luego npm start, esto abrira una ventana en su navegador web con el login para la pagina. \
-Si desea abrir mas ventanas de la pagina web, puede hacerlo al escribir en el buscador [http://localhost:3000](http://localhost:3000).
+* Crear tablas para la base de datos: en una terminal en el /backend ejecute el comando node --env-file=.env runTablesCreation.js \
+* Poblar tablas con datos: en una terminal en el /backend ejecute el comando node --env-file=.env runSeed.js
+
+## Inicializacion de la pagina web.
+
+* Iniciar servidor: en una terminal en el /backend ejecute el comando node --env-file=.env server.js \
+* Luego inicialice una terminal en el directorio BrokerTEC, y corra el comando npm install y luego npm start, esto abrira una ventana en su navegador web con el login para la pagina. \
+* Si desea abrir mas ventanas de la pagina web, puede hacerlo al escribir en el buscador [http://localhost:3000](http://localhost:3000).
 
 
 ## Posibles fuentes de error y soluciones.
