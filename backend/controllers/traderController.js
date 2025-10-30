@@ -60,7 +60,7 @@ export async function getHomeTraderData(req, res) {
 // Obtener todas las empresas
 export async function getEmpresas(req, res) {
     try {
-        const empresas = await queryDB('SELECT * FROM Empresa');
+        const empresas = await queryDB('SELECT * FROM Empresa WHERE Empresa.delistada = 0 ');
         res.json(empresas);
     } catch (err) {
         res.status(500).json({ message: 'Error al obtener empresas', error: err.message });
@@ -97,7 +97,7 @@ export async function getEmpresaDetalle(req, res) {
 
     try {
         // 1) Obtener datos base de la empresa
-        const empresas = await queryDB('SELECT id, id_mercado, nombre, ticker FROM Empresa WHERE id = @id', { id });
+        const empresas = await queryDB('SELECT id, id_mercado, nombre, ticker FROM Empresa WHERE id = @id AND delistada = 0', { id });
         if (!empresas || empresas.length === 0)
             return res.status(404).json({ message: 'Empresa no encontrada' });
 
@@ -598,14 +598,19 @@ export async function liquidarTodo(req, res) {
     if (!u || u.length === 0) return res.status(404).json({ message: "Usuario no encontrado" });
     const valid = await bcrypt.compare(password, u[0].contrasena_hash);
     if (!valid) return res.status(400).json({ message: "contraseña incorrecta" });
+    const userAlias = u[0].alias;
 
-    // usar transaction con mssql (patrón usado en empresaController)
+    // usar transaction con mssql
     const pool = await sql.connect(dbConfig);
     const transaction = new sql.Transaction(pool);
     try {
       await transaction.begin();
       const request = new sql.Request(transaction);
       request.input("userId", sql.UniqueIdentifier, userId);
+
+      await request.query(`EXEC sp_set_session_context @key = N'liquidacion_total', @value = N'SI'`);
+      await request.input('userAlias', sql.NVarChar, userAlias)
+                   .query(`EXEC sp_set_session_context @key = N'usuario_admin', @value = @userAlias`);
 
       // Script set-based: construir #toSell con las posiciones >0 para el usuario
       const sqlScript = `
@@ -702,6 +707,10 @@ export async function liquidarTodo(req, res) {
       `;
 
       const result = await request.query(sqlScript);
+
+      await request.query(`EXEC sp_set_session_context @key = N'liquidacion_total', @value = NULL`);
+      await request.query(`EXEC sp_set_session_context @key = N'usuario_admin', @value = NULL`);
+
       await transaction.commit();
       // result.recordset[0] debería contener soldCount/totalValue
       const stats = result.recordset && result.recordset.length ? result.recordset[result.recordset.length - 1] : null;

@@ -262,7 +262,6 @@ const Catalogos = () => {
       fetchData();
     } catch (err) { setError(err.message || 'Error'); }
   };
-
   const handleDelistEmpresa = async () => {
     setError(''); setSuccess('');
     if (!justificacion.trim()) { setError('Justificación requerida'); return; }
@@ -272,9 +271,10 @@ const Catalogos = () => {
       setShowDelistModal(false);
       setJustificacion(''); setPrecioLiquidacion('');
       fetchData();
-    } catch (err) { setError(err.message || 'Error'); }
+    } catch (err) { 
+      setError(err.response?.data?.message || err.message || 'Error al delistar empresa'); 
+    }
   };
-
   const inputStyle = modalInput(isMobile);
 
   return (

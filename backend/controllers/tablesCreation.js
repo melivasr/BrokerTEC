@@ -179,52 +179,21 @@ export default async function createAllTables() {
       );
     `);
 
-    // === CREACIÓN DE TRIGGERS ===
     await queryDB(`
-      DROP TRIGGER IF EXISTS TRG_UpdateUsuarioIdBilletera;
-      DROP TRIGGER IF EXISTS TRG_UpdateUsuarioIdPortafolio;
-      DROP TRIGGER IF EXISTS TRG_UpdateUsuarioAlias;
+      CREATE TABLE Auditoria (
+        id UNIQUEIDENTIFIER PRIMARY KEY DEFAULT NEWID(),
+        fecha DATETIME2(3) NOT NULL DEFAULT SYSUTCDATETIME(),
+        usuario_ejecutor NVARCHAR(40) NOT NULL,
+        usuario_afectado NVARCHAR(40) NULL,
+        accion NVARCHAR(255) NOT NULL,
+        detalles NVARCHAR(500) NULL
+      );
     `);
 
-    await queryDB(`
-      CREATE TRIGGER TRG_UpdateUsuarioIdBilletera
-      ON Usuario
-      AFTER UPDATE
-      AS
-      BEGIN
-          SET NOCOUNT ON;
-          IF UPDATE(id_billetera)
-          BEGIN
-              UPDATE T
-              SET T.id_billetera = I.id_billetera
-              FROM Transaccion AS T
-              INNER JOIN deleted AS D ON T.alias = D.alias
-              INNER JOIN inserted AS I ON D.id = I.id;
-          END
-      END;
-    `);
+    console.log("Tablas creadas correctamente.");
 
-    await queryDB(`
-      CREATE TRIGGER TRG_UpdateUsuarioIdPortafolio
-      ON Usuario
-      AFTER UPDATE
-      AS
-      BEGIN
-          SET NOCOUNT ON;
-          IF UPDATE(id_portafolio)
-          BEGIN
-              UPDATE T
-              SET T.id_portafolio = I.id_portafolio
-              FROM Transaccion AS T
-              INNER JOIN deleted AS D ON T.alias = D.alias
-              INNER JOIN inserted AS I ON D.id = I.id;
-          END
-      END;
-    `);
-
-    console.log("Tablas y triggers creados correctamente.");
   } catch (err) {
-    console.error("Error creando tablas o triggers:", err);
+    console.error("Error creando tablas:", err);
     throw err;
   }
 }
