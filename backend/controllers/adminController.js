@@ -61,9 +61,7 @@ export async function updateBilletera(req, res) {
     try { await transaction.rollback(); } catch (rollbackErr) {}
     console.error('[updateBilletera] Error updating wallet:', e.message);
     res.status(500).json({ message: "Error al actualizar billetera" });
-  } finally {
-    try { pool && pool.close(); } catch (e) {}
-  }
+  } 
 }
 
 // Obtener detalles de una billetera específica
@@ -181,9 +179,7 @@ export async function deleteMercado(req, res) {
     try { await transaction.rollback(); } catch (rollbackErr) {}
     console.error('Error al eliminar mercado:', e);
     res.status(500).json({ message: 'Error al eliminar mercado' });
-  } finally {
-    try { pool && pool.close(); } catch (e) {}
-  }
+  } 
 }
 
 // Empresas (vista admin)
@@ -263,9 +259,7 @@ export async function createEmpresaAdmin(req, res) {
     try { await transaction.rollback(); } catch (rollbackErr) {}
     console.error('[createEmpresaAdmin] Error creating company:', e.message);
     res.status(500).json({ message: 'Error al crear empresa' });
-  } finally {
-    try { pool && pool.close(); } catch (e) {}
-  }
+  } 
 }
 
 export async function updateEmpresa(req, res) {
@@ -434,9 +428,7 @@ export async function delistarEmpresa(req, res) {
     try { await transaction.rollback(); } catch (rollbackErr) {}
     console.error('[delistarEmpresa] Error delisting company:', e.message);
     res.status(500).json({ message: 'Error al delistar empresa' });
-  } finally {
-    try { pool && pool.close(); } catch (e) {}
-  }
+  } 
 }
 
 // Precios & Carga
@@ -506,9 +498,8 @@ export async function cargarPrecioManual(req, res) {
     try { await transaction.rollback(); } catch (rollbackErr) {}
     console.error('[cargarPrecioManual] Error loading price:', e.message);
     res.status(500).json({ message: 'Error al cargar precio' });
-  } finally {
-    try { pool && pool.close(); } catch (e) {}
-  }
+  } 
+  
 }
 
 export async function cargarPreciosBatch(req, res) {
@@ -577,9 +568,7 @@ export async function cargarPreciosBatch(req, res) {
       try { await transaction.rollback(); } catch (rollbackErr) {}
       fail++;
       errores.push({ id_empresa: it?.id_empresa, error: e.message || 'error desconocido' });
-    } finally {
-      try { pool && pool.close(); } catch (e) {}
-    }
+    } 
   }
 
   res.json({ message: 'Carga completada', exitosos: ok, fallidos: fail, errores });
@@ -815,9 +804,7 @@ export async function deshabilitarUsuario(req, res) {
     try { await transaction.rollback(); } catch (e) {}
     console.error('[deshabilitarUsuario] Error disabling user:', error.message);
     res.status(500).json({ message: 'Error al deshabilitar usuario' });
-  } finally {
-    try { pool && pool.close(); } catch (e) {}
-  }
+  } 
 }
 
 // Rankings
