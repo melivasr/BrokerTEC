@@ -1,0 +1,1312 @@
+openapi: 3.1.0
+info:
+  title: BrokerTEC API
+  version: 0.2.0
+  description: >
+    Contrato inicial de la API BrokerTEC. Versionado en /v1.
+    Todas las respuestas siguen { ok, data|error }.
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.{env}.brokertec.dev/v1
+    description: Servidores por ambiente
+    variables:
+      env:
+        default: mock
+        enum: [mock, staging, prod]
+
+tags:
+  - name: System
+    description: Salud/estado del servicio
+  - name: Auth
+    description: Autenticación y manejo de tokens
+  - name: Profile
+    description: Perfil del usuario autenticado
+  - name: Trader
+    description: Operaciones y vistas del Trader
+  - name: Admin
+    description: Administración de catálogos y usuarios
+  - name: Analyst
+    description: Reportes y estadísticas
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  headers:
+    X-Correlation-Id:
+      description: Id de correlación para trazabilidad (eco en respuesta).
+      schema: { type: string, format: uuid }
+    traceparent:
+      description: Cabecera W3C Trace Context entrante para trazabilidad distribuida.
+      schema: { type: string }
+    Idempotency-Key:
+      description: Clave única para reintentos seguros de la misma operación.
+      schema:
+        type: string
+        minLength: 10
+        maxLength: 128
+    RateLimit-Limit:
+      description: Límite de peticiones del período actual.
+      schema: { type: integer, minimum: 1 }
+    RateLimit-Remaining:
+      description: Peticiones restantes en el período actual.
+      schema: { type: integer, minimum: 0 }
+    RateLimit-Reset:
+      description: Epoch (segundos) cuando se reinicia la ventana.
+      schema: { type: integer, minimum: 0 }
+    Retry-After:
+      description: Segundos a esperar antes de reintentar (429/409).
+      schema: { type: integer, minimum: 1 }
+
+  parameters:
+    Limit:
+      in: query
+      name: limit
+      schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
+    Offset:
+      in: query
+      name: offset
+      schema: { type: integer, minimum: 0, default: 0 }
+    From:
+      in: query
+      name: from
+      description: Fecha/hora inicio (ISO-8601, UTC)
+      schema: { type: string, format: date-time }
+    To:
+      in: query
+      name: to
+      description: Fecha/hora fin (ISO-8601, UTC)
+      schema: { type: string, format: date-time }
+
+  responses:
+    Ok:
+      description: OK
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+        RateLimit-Limit:    { $ref: '#/components/headers/RateLimit-Limit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimit-Remaining' }
+        RateLimit-Reset:    { $ref: '#/components/headers/RateLimit-Reset' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/OkRes' }
+
+    BadRequest:
+      description: Datos inválidos
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
+    Unauthorized:
+      description: No autenticado
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
+    Forbidden:
+      description: Rol/permiso insuficiente
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
+    NotFound:
+      description: Recurso no encontrado
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
+    Conflict:
+      description: Conflicto de estado (precio/inventario/etc.)
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+        Retry-After:      { $ref: '#/components/headers/Retry-After' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
+    Unprocessable:
+      description: Validación de negocio fina falló
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
+    TooManyRequests:
+      description: Límite de peticiones alcanzado
+      headers:
+        X-Correlation-Id:   { $ref: '#/components/headers/X-Correlation-Id' }
+        RateLimit-Limit:    { $ref: '#/components/headers/RateLimit-Limit' }
+        RateLimit-Remaining: { $ref: '#/components/headers/RateLimit-Remaining' }
+        RateLimit-Reset:    { $ref: '#/components/headers/RateLimit-Reset' }
+        Retry-After:        { $ref: '#/components/headers/Retry-After' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
+    InternalError:
+      description: Error inesperado
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorRes' }
+
+  schemas:
+    OkRes:
+      type: object
+      required: [ok, data]
+      properties:
+        ok: { type: boolean, const: true }
+        data: {}
+
+    ErrorRes:
+      type: object
+      required: [ok, error]
+      properties:
+        ok: { type: boolean, const: false }
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, description: Código de error estable }
+            message: { type: string }
+            traceId: { type: string, format: uuid }
+
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: string
+          pattern: '^-?\d+(\.\d{1,4})?$'
+          example: "12345.67"
+          description: Decimal como string (evita binario)
+        currency: { type: string, example: USD }
+
+    Pagination:
+      type: object
+      properties:
+        limit: { type: integer }
+        offset: { type: integer }
+        total: { type: integer }
+
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        alias: { type: string }
+        role:
+          type: string
+          enum: [ADMIN, TRADER, ANALYST]
+        status:
+          type: string
+          enum: [ACTIVE, DISABLED]
+          default: ACTIVE
+        markets:
+          type: array
+          items: { type: string }
+
+    Profile:
+      type: object
+      properties:
+        fullName: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        country: { type: string }
+        address: { type: string }
+
+    Wallet:
+      type: object
+      properties:
+        balance: { $ref: '#/components/schemas/Money' }
+        category:
+          type: string
+          enum: [JUNIOR, MID, SENIOR]
+        dailyLimit: { $ref: '#/components/schemas/Money' }
+        dailyConsumed: { $ref: '#/components/schemas/Money' }
+
+    TopUp:
+      type: object
+      properties:
+        id: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+        ts: { type: string, format: date-time }
+
+    Market:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        enabled: { type: boolean }
+
+    Company:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        marketId: { type: string }
+        totalShares: { type: integer, minimum: 0 }
+        currentPrice: { $ref: '#/components/schemas/Money' }
+        marketCap: { $ref: '#/components/schemas/Money' }
+        listed: { type: boolean, default: true }
+
+    Price:
+      type: object
+      properties:
+        companyId: { type: string }
+        price: { $ref: '#/components/schemas/Money' }
+        ts: { type: string, format: date-time }
+
+    Position:
+      type: object
+      properties:
+        companyId: { type: string }
+        qty: { type: integer, minimum: 0 }
+        avgCost: { $ref: '#/components/schemas/Money' }
+
+    Trade:
+      type: object
+      properties:
+        id: { type: string }
+        alias: { type: string, description: Trader que ejecuta }
+        side:
+          type: string
+          enum: [BUY, SELL]
+        companyId: { type: string }
+        qty: { type: integer, minimum: 1 }
+        executedPrice: { $ref: '#/components/schemas/Money' }
+        ts: { type: string, format: date-time }
+
+    PortfolioItem:
+      type: object
+      properties:
+        companyId: { type: string }
+        marketId: { type: string }
+        qty: { type: integer, minimum: 0 }
+        avgCost: { $ref: '#/components/schemas/Money' }
+        currentPrice: { $ref: '#/components/schemas/Money' }
+        currentValue: { $ref: '#/components/schemas/Money' }
+
+    AuditEvent:
+      type: object
+      properties:
+        id: { type: string }
+        actorAlias: { type: string }
+        action: { type: string }
+        entity: { type: string }
+        entityId: { type: string }
+        payload: {}
+        ts: { type: string, format: date-time }
+
+    StatsHoldingsRow:
+      type: object
+      properties:
+        key: { type: string }
+        pctTraders: { type: number, minimum: 0, maximum: 100 }
+        pctAdmin: { type: number, minimum: 0, maximum: 100 }
+
+    StatsHoldings:
+      type: object
+      properties:
+        scope:
+          type: string
+          enum: [market, company]
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/StatsHoldingsRow' }
+
+security:
+  - bearerAuth: []
+
+paths:
+  /health:
+    get:
+      security: []
+      tags: [System]
+      operationId: health
+      summary: Estado básico del servicio
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/X-Correlation-Id' }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, enum: [ok] }
+
+  /auth/login:
+    post:
+      security: []
+      tags: [Auth]
+      operationId: authLogin
+      summary: Iniciar sesión
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alias, password]
+              properties:
+                alias: { type: string, minLength: 3, maxLength: 50 }
+                password: { type: string, minLength: 8, maxLength: 100 }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /auth/refresh:
+    post:
+      security: []
+      tags: [Auth]
+      operationId: authRefresh
+      summary: Renovar token de acceso
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /me/profile:
+    get:
+      tags: [Profile]
+      operationId: meGetProfile
+      summary: Obtener perfil propio
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+    put:
+      tags: [Profile]
+      operationId: meUpdateProfile
+      summary: Actualizar perfil propio
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Profile' }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /me/change-password:
+    post:
+      tags: [Profile]
+      operationId: meChangePassword
+      summary: Cambiar contraseña (requiere password actual)
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, minLength: 8 }
+                newPassword: { type: string, minLength: 8 }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "422": { $ref: '#/components/responses/Unprocessable' }
+
+  /trader/home:
+    get:
+      tags: [Trader]
+      operationId: traderHome
+      summary: Top empresas por mercado y métricas de portada
+      parameters:
+        - in: query
+          name: marketId
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /trader/company/{companyId}:
+    get:
+      tags: [Trader]
+      operationId: traderCompanyDetail
+      summary: Detalle de empresa (precio actual, histórico, inventario Tesorería)
+      parameters:
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /trader/operate/buy:
+    post:
+      tags: [Trader]
+      operationId: traderBuy
+      summary: Comprar al precio actual
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyId, qty]
+              properties:
+                companyId: { type: string }
+                qty: { type: integer, minimum: 1 }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "422": { $ref: '#/components/responses/Unprocessable' }
+
+  /trader/operate/sell:
+    post:
+      tags: [Trader]
+      operationId: traderSell
+      summary: Vender desde posición disponible
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [companyId, qty]
+              properties:
+                companyId: { type: string }
+                qty: { type: integer, minimum: 1 }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "422": { $ref: '#/components/responses/Unprocessable' }
+
+  /trader/wallet:
+    get:
+      tags: [Trader]
+      operationId: traderGetWallet
+      summary: Ver estado de wallet
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /trader/wallet/topup:
+    post:
+      tags: [Trader]
+      operationId: traderTopup
+      summary: Recargar wallet (respeta límite diario por categoría)
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [amount]
+              properties:
+                amount: { $ref: '#/components/schemas/Money' }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "409": { $ref: '#/components/responses/Conflict' }
+
+  /trader/wallet/topups:
+    get:
+      tags: [Trader]
+      operationId: traderTopupHistory
+      summary: Historial de recargas
+      parameters:
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /trader/portfolio:
+    get:
+      tags: [Trader]
+      operationId: traderPortfolio
+      summary: Ver portafolio
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+
+  /trader/security/liquidate-all:
+    post:
+      tags: [Trader]
+      operationId: traderLiquidateAll
+      summary: Liquidar todas las posiciones (requiere reingreso de contraseña)
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 8 }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "409": { $ref: '#/components/responses/Conflict' }
+
+  /admin/markets:
+    get:
+      tags: [Admin]
+      operationId: adminListMarkets
+      summary: Listar mercados
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      operationId: adminCreateMercado
+      summary: Crear mercado
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Market' }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /admin/markets/{id}:
+    get:
+      tags: [Admin]
+      operationId: adminGetMercados
+      summary: Obtener mercado
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Admin]
+      operationId: adminUpdateMercado
+      summary: Actualizar mercado
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Market' }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Admin]
+      operationId: adminDeleteMercado
+      summary: Eliminar mercado
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /admin/companies:
+    get:
+      tags: [Admin]
+      operationId: adminListCompanies
+      summary: Listar empresas
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      operationId: createEmpresaAdmin
+      summary: Crear empresa
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Company' }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /admin/companies/{id}:
+    get:
+      tags: [Admin]
+      operationId: getEmpresasAdmin
+      summary: Obtener empresa
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Admin]
+      operationId: updateEmpresa
+      summary: Actualizar empresa
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Company' }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Admin]
+      operationId: adminDeleteCompany
+      summary: Eliminar empresa
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /admin/companies/{id}/delist:
+    post:
+      tags: [Admin]
+      operationId: delistarEmpresa
+      summary: Delistar empresa (liquida posiciones y audita)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 5 }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { $ref: '#/components/responses/Conflict' }
+
+  /admin/companies/{id}/cargar-precio:
+    post:
+      tags: [Admin]
+      operationId: adminSetPrice
+      summary: Actualizar precio actual (crea registro histórico)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [price]
+              properties:
+                price: { $ref: '#/components/schemas/Money' }
+                ts: { type: string, format: date-time }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /admin/companies/{id}/historial-precio:
+    get:
+      tags: [Admin]
+      operationId: adminListPrices
+      summary: Listar histórico de precios
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+      # 401/403 implícitos si aplica
+
+  /admin/users:
+    get:
+      tags: [Admin]
+      operationId: adminListUsers
+      summary: Listar usuarios
+      parameters:
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      operationId: createUsuario
+      summary: Crear usuario
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/User' }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /admin/users/{id}:
+    get:
+      tags: [Admin]
+      operationId: getUsuarios
+      summary: Obtener usuario
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Admin]
+      operationId: updateUsuarioAdmin
+      summary: Actualizar usuario (rol, mercados habilitados, etc.)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/User' }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /admin/users/{id}/disable:
+    post:
+      tags: [Admin]
+      operationId: adminDisableUser
+      summary: Deshabilitar usuario (liquida posiciones, acredita wallet, requiere motivo)
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 5 }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "409": { $ref: '#/components/responses/Conflict' }
+
+  /admin/users/{id}/wallet:
+    get:
+      tags: [Admin]
+      operationId: adminGetUserWallet
+      summary: Ver wallet de usuario
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    put:
+      tags: [Admin]
+      operationId: adminUpdateUserWallet
+      summary: Ajustar wallet / override de límites
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Wallet' }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /admin/reports/top-traders:
+    get:
+      tags: [Admin]
+      operationId: adminTopTraders
+      summary: Ranking por wallet + valor en acciones
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /analyst/reports/company/{companyId}/trades:
+    get:
+      tags: [Analyst]
+      operationId: analystCompanyTrades
+      summary: Reporte de trades por empresa (alias, buy/sell, qty, precio, ts)
+      parameters:
+        - in: path
+          name: companyId
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /analyst/reports/user/{alias}/trades:
+    get:
+      tags: [Analyst]
+      operationId: analystUserTrades
+      summary: Reporte de trades por usuario (alias)
+      parameters:
+        - in: path
+          name: alias
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Offset'
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /analyst/reports/holdings:
+    get:
+      tags: [Analyst]
+      operationId: analystHoldings
+      summary: Distribución de tenencias (traders vs. administración) por mercado o empresa
+      parameters:
+        - in: query
+          name: scope
+          required: true
+          schema: { type: string, enum: [market, company] }
+        - in: query
+          name: marketId
+          schema: { type: string }
+        - in: query
+          name: companyId
+          schema: { type: string }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string, format: uuid }
+        - in: header
+          name: traceparent
+          schema: { type: string }
+      responses:
+        "200": { $ref: '#/components/responses/Ok' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
