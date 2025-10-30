@@ -37,6 +37,7 @@ cd backend
 npm install
 node --env-file=.env runTablesCreation.js # crea tablas en base de datos
 node --env-file=.env runSeed.js # pobla las tablas
+node --env-file=.env runTriggersCreation.js # carga los triggers a la base de datos
 node --env-file=.env server.js
 ```
 
@@ -61,6 +62,7 @@ Una vez se tiene listo este entorno de programas se puede descargar el zip del r
 	PORT=4000 #Puerto donde correrá el servidor backend por defecto 4000
 ``` 
 * Crear tablas para la base de datos: en una terminal en el /backend ejecute el comando node --env-file=.env runTablesCreation.js \
+* Cargar los Triggers a la base de datos: en una terminal en el /backend ejecute el comando node --env-file=.env runTriggersCreation.js \
 * Poblar tablas con datos: en una terminal en el /backend ejecute el comando node --env-file=.env runSeed.js
 
 ### Inicializacion de la pagina web.

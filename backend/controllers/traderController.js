@@ -363,12 +363,19 @@ export async function comprarAcciones(req, res) {
             const portId = portRes.recordset[0].id;
             await request.query(`UPDATE Portafolio SET acciones = acciones + ${cantidad} WHERE id='${portId}'`);
         } else {
-            // crear nuevo portafolio y vincular al usuario
-            const newPortId = sql.uniqueidentifier ? sql.uniqueidentifier() : undefined;
-            // Insertar portafolio sin GUID manual (usar NEWID en SQL)
-            await request.query(`INSERT INTO Portafolio (id, id_empresa, acciones) VALUES (NEWID(), '${id}', ${cantidad})`);
-            // actualizar usuario para apuntar al nuevo portafolio
-            await request.query(`UPDATE Usuario SET id_portafolio = (SELECT TOP 1 id FROM Portafolio WHERE id_empresa='${id}' AND acciones = ${cantidad}) WHERE id='${user.id}'`);
+            // Verificar si existe un portafolio para esta empresa (sin vinculación a usuario)
+            const existingPortRes = await request.query(`SELECT TOP 1 id FROM Portafolio WHERE id_empresa='${id}' ORDER BY id DESC`);
+            if (existingPortRes.recordset && existingPortRes.recordset.length > 0) {
+                // Ya existe portafolio, solo incrementar acciones
+                await request.query(`UPDATE Portafolio SET acciones = acciones + ${cantidad} WHERE id_empresa='${id}'`);
+            } else {
+                // Crear nuevo portafolio
+                const newPortId = 'NEWID()';
+                await request.query(`INSERT INTO Portafolio (id, id_empresa, acciones) VALUES (NEWID(), '${id}', ${cantidad})`);
+                
+                // Solo actualizar Usuario.id_portafolio si el usuario aún no tiene uno asignado
+                await request.query(`UPDATE Usuario SET id_portafolio = (SELECT TOP 1 id FROM Portafolio WHERE id_empresa='${id}' ORDER BY id DESC) WHERE id='${user.id}' AND id_portafolio IS NULL`);
+            }
         }
 
         // insertar transaccion
