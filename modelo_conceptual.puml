@@ -19,6 +19,7 @@ entity "Usuario" as Usuario {
 	correo : NVARCHAR
 	rol (Admin/Trader/Analista) : NVARCHAR
 	contraseña (hash) : VARCHAR
+	ultimo_acceso_seguridad : DATETIME
 }
 
 entity "Empresa" as Empresa {
@@ -26,6 +27,7 @@ entity "Empresa" as Empresa {
 	id_mercado : UNIQUEIDENTIFIER <<FK>>
 	nombre : NVARCHAR
 	ticker : CHAR
+	delistada : BIT
 }
 
 entity "Mercado" as Mercado {
@@ -52,8 +54,8 @@ entity Transaccion as "Transaccion" {
 
 entity "Inventario" as Inventario {
 	*id_empresa : UNIQUEIDENTIFIER <<FK>>
-	acciones_totales
-	acciones_disponibles
+	acciones_totales : INT
+	acciones_disponibles : INT
 	precio : DECIMAL
 	capitalizacion : DECIMAL <<derived>>
 }
@@ -73,6 +75,7 @@ entity "Billetera" as Billetera {
 	fondos : DECIMAL
 	limite_diario : DECIMAL
 	consumo : DECIMAL
+	bloqueo_hasta : DATETIME2
 }
 
 'clarificar que es recargar, consumir, y limite_diario
@@ -83,6 +86,8 @@ entity "Billetera_historial" as Billetera_historial {
 	fondos : DECIMAL
 	limite_diario : DECIMAL
 	consumo : DECIMAL
+	bloqueo_hasta : DATETIME2
+	recarga_monto : DECIMAL
 }
 
 ' que es costo promedio?
@@ -98,6 +103,11 @@ entity "Portafolio_historial" as Portafolio_historial {
 	' id_empresa referencia a Empresa
 	id_empresa : UNIQUEIDENTIFIER <<FK>>
 	acciones : INT
+}
+
+entity "Empresa_favorita" as Empresa_favorita {
+	*id_empresa : UNIQUEIDENTIFIER <<FK>>
+	*id_usuario : UNIQUEIDENTIFIER <<FK>>
 }
 
 ' ===== Relaciones =====
