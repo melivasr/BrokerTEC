@@ -16,8 +16,6 @@ export default function EmpresaDetalle() {
   const currentUser = getCurrentUser();
   const usuarioDeshabilitado = currentUser && (currentUser.habilitado === 0 || currentUser.habilitado === false);
 
-  // Nota: no hacer early return antes de los hooks para cumplir la regla de hooks.
-
   useEffect(() => {
     async function fetchData() {
       setError("");
@@ -45,7 +43,7 @@ export default function EmpresaDetalle() {
   }, [companyId]);
 
   const handleOperar = () => {
-    // navegar a Operar por ruta con id (coincide con routes.js)
+    // navegar a Operar por ruta con id
   navigate(`/trader/operar/${companyId}`);
   };
 
