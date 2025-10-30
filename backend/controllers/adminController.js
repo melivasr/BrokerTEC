@@ -1,8 +1,9 @@
-import { queryDB } from "../config/db.js";
+import { queryDB, dbConfig } from "../config/db.js";
+import sql from 'mssql';
+
 // Helpers
 const GUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 const isGuid = (v) => GUID.test(String(v || ''));
-
 
 // Actualizar billetera de un usuario
 export async function updateBilletera(req, res) {
@@ -22,35 +23,46 @@ export async function updateBilletera(req, res) {
     return res.status(400).json({ message: "Nada que actualizar" });
   }
 
+  const pool = await sql.connect(dbConfig);
+  const transaction = new sql.Transaction(pool);
+  
   try {
-    const ex = await queryDB(`SELECT 1 FROM Billetera WHERE id=@id`, { id: id_billetera });
-    if (!ex.length) return res.status(404).json({ message: "Billetera no encontrada" });
+    await transaction.begin();
+    const request = new sql.Request(transaction);
 
+    // Verificar que existe la billetera
+    const ex = await request.query(`SELECT 1 FROM Billetera WHERE id='${id_billetera}'`);
+    if (!ex.recordset || ex.recordset.length === 0) {
+      await transaction.rollback();
+      return res.status(404).json({ message: "Billetera no encontrada" });
+    }
+
+    // Actualizar categoría si se especificó
     if (categoria !== undefined) {
-      await queryDB(
-        `UPDATE Billetera SET categoria=@categoria WHERE id=@id`,
-        { categoria, id: id_billetera }
-      );
+      await request.query(`UPDATE Billetera SET categoria='${categoria}' WHERE id='${id_billetera}'`);
     }
+    
+    // Actualizar límite diario si se especificó
     if (limite_diario !== undefined) {
-      await queryDB(
-        `UPDATE Billetera SET limite_diario=@lim WHERE id=@id`,
-        { lim: Number(limite_diario), id: id_billetera }
-      );
+      await request.query(`UPDATE Billetera SET limite_diario=${Number(limite_diario)} WHERE id='${id_billetera}'`);
     }
 
-    await queryDB(
-      `INSERT INTO Billetera_Historial
-        (id_billetera, categoria, fondos, limite_diario, consumo, bloqueo_hasta, recarga_monto)
-       SELECT id, categoria, fondos, limite_diario, consumo, bloqueo_hasta, NULL
-       FROM Billetera WHERE id=@id`,
-      { id: id_billetera }
-    );
+    // Registrar en historial
+    await request.query(`
+      INSERT INTO Billetera_Historial (id_billetera, categoria, fondos, limite_diario, consumo, bloqueo_hasta, recarga_monto)
+      SELECT id, categoria, fondos, limite_diario, consumo, bloqueo_hasta, NULL
+      FROM Billetera WHERE id='${id_billetera}'
+    `);
 
+    await transaction.commit();
     res.json({ message: "Billetera actualizada" });
+
   } catch (e) {
+    try { await transaction.rollback(); } catch (rollbackErr) {}
     console.error('[updateBilletera] Error updating wallet:', e.message);
     res.status(500).json({ message: "Error al actualizar billetera" });
+  } finally {
+    try { pool && pool.close(); } catch (e) {}
   }
 }
 
@@ -75,7 +87,6 @@ export async function getBilletera(req, res) {
 }
 
 // Mercados
-
 export async function createMercado(req, res) {
   const { nombre } = req.body;
   if (!nombre) return res.status(400).json({ message: 'Nombre requerido' });
@@ -99,55 +110,79 @@ export async function updateMercado(req, res) {
     res.status(500).json({ message: 'Error al actualizar mercado' });
   }
 }
+
 export async function deleteMercado(req, res) {
   const { id } = req.params;
   if (!isGuid(id)) return res.status(400).json({ message: 'ID inválido' });
   
+  const pool = await sql.connect(dbConfig);
+  const transaction = new sql.Transaction(pool);
+  
   try {
+    await transaction.begin();
+    const request = new sql.Request(transaction);
+
     // Verificar empresas activas
-    const empresasActivas = await queryDB(
-      `SELECT COUNT(*) as total FROM Empresa WHERE id_mercado = @id AND (delistada = 0 OR delistada IS NULL)`,
-      { id }
-    );
-    if (empresasActivas[0].total > 0) {
+    const empresasActivas = await request.query(`
+      SELECT COUNT(*) as total 
+      FROM Empresa 
+      WHERE id_mercado = '${id}' AND (delistada = 0 OR delistada IS NULL)
+    `);
+    
+    if (empresasActivas.recordset[0].total > 0) {
+      await transaction.rollback();
       return res.status(400).json({ 
-        message: `No se puede eliminar: hay ${empresasActivas[0].total} empresa(s) activa(s). Debe delistarlas primero.` 
+        message: `No se puede eliminar: hay ${empresasActivas.recordset[0].total} empresa(s) activa(s). Debe delistarlas primero.` 
       });
     }
+
     // Obtener empresas delistadas
-    const empresasDelistadas = await queryDB(
-      `SELECT id FROM Empresa WHERE id_mercado = @id AND delistada = 1`,
-      { id }
-    );
-    if (empresasDelistadas.length > 0) {
-      const empresaIds = empresasDelistadas.map(e => `'${e.id}'`).join(',');
+    const empresasDelistadas = await request.query(`
+      SELECT id FROM Empresa WHERE id_mercado = '${id}' AND delistada = 1
+    `);
+    
+    let empresasEliminadas = 0;
+    
+    if (empresasDelistadas.recordset && empresasDelistadas.recordset.length > 0) {
+      const empresaIds = empresasDelistadas.recordset.map(e => `'${e.id}'`).join(',');
       
-      await queryDB(`
+      // Limpiar referencias en Transaccion
+      await request.query(`
         UPDATE Transaccion 
         SET id_empresa = NULL 
         WHERE id_empresa IN (${empresaIds})
       `);
       
-      await queryDB(`
+      await request.query(`
         UPDATE Transaccion 
         SET id_portafolio = NULL 
         WHERE id_portafolio IN (
           SELECT id FROM Portafolio WHERE id_empresa IN (${empresaIds})
         )
       `);
-      await queryDB(`DELETE FROM Empresa WHERE id IN (${empresaIds})`);
+      
+      // Eliminar empresas
+      await request.query(`DELETE FROM Empresa WHERE id IN (${empresaIds})`);
+      empresasEliminadas = empresasDelistadas.recordset.length;
     }
+
     // Eliminar mercado
-    await queryDB(`DELETE FROM Mercado WHERE id = @id`, { id });
+    await request.query(`DELETE FROM Mercado WHERE id = '${id}'`);
+    
+    await transaction.commit();
     
     res.json({ 
-      message: empresasDelistadas.length > 0 
-        ? `Mercado eliminado (se eliminaron ${empresasDelistadas.length} empresa(s) delistada(s))`
+      message: empresasEliminadas > 0 
+        ? `Mercado eliminado (se eliminaron ${empresasEliminadas} empresa(s) delistada(s))`
         : 'Mercado eliminado' 
     });
+
   } catch (e) {
+    try { await transaction.rollback(); } catch (rollbackErr) {}
     console.error('Error al eliminar mercado:', e);
     res.status(500).json({ message: 'Error al eliminar mercado' });
+  } finally {
+    try { pool && pool.close(); } catch (e) {}
   }
 }
 
@@ -183,36 +218,53 @@ export async function createEmpresaAdmin(req, res) {
   const { nombre, ticker, id_mercado, precio, acciones_totales } = req.body;
   if (!nombre || !ticker || !id_mercado)
     return res.status(400).json({ message: 'Datos requeridos' });
+
+  const pool = await sql.connect(dbConfig);
+  const transaction = new sql.Transaction(pool);
+  
   try {
-    const ins = await queryDB(
-      `INSERT INTO Empresa (nombre, ticker, id_mercado)
-       OUTPUT INSERTED.id
-       VALUES (@nombre, @ticker, @id_mercado)`,
-      { nombre, ticker: String(ticker).toUpperCase(), id_mercado }
-    );
-    const idEmpresa = ins[0].id;
+    await transaction.begin();
+    const request = new sql.Request(transaction);
 
+    // Insertar empresa
+    const ins = await request.query(`
+      INSERT INTO Empresa (nombre, ticker, id_mercado)
+      OUTPUT INSERTED.id
+      VALUES ('${nombre}', '${String(ticker).toUpperCase()}', '${id_mercado}')
+    `);
+    
+    const idEmpresa = ins.recordset[0].id;
+
+    // Si se proporcionó precio e inventario, crearlos
     if (precio && acciones_totales) {
-      if (precio <= 0 || acciones_totales <= 0)
+      if (precio <= 0 || acciones_totales <= 0) {
+        await transaction.rollback();
         return res.status(400).json({ message: 'Capitalización inválida' });
+      }
 
-      await queryDB(
-        `INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
-         VALUES (@id_empresa, @acciones_totales, @acciones_totales, @precio)`,
-        { id_empresa: idEmpresa, acciones_totales, precio }
-      );
+      // Crear inventario
+      await request.query(`
+        INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
+        VALUES ('${idEmpresa}', ${acciones_totales}, ${acciones_totales}, ${precio})
+      `);
 
-      await queryDB(
-        `INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
-         SELECT SYSUTCDATETIME(), id_empresa, acciones_totales, acciones_disponibles, precio
-         FROM Inventario WHERE id_empresa=@id_empresa`,
-        { id_empresa: idEmpresa }
-      );
+      // Crear historial
+      await request.query(`
+        INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
+        SELECT SYSUTCDATETIME(), id_empresa, acciones_totales, acciones_disponibles, precio
+        FROM Inventario WHERE id_empresa='${idEmpresa}'
+      `);
     }
 
+    await transaction.commit();
     res.status(201).json({ message: 'Empresa creada', id: idEmpresa });
+
   } catch (e) {
+    try { await transaction.rollback(); } catch (rollbackErr) {}
+    console.error('[createEmpresaAdmin] Error creating company:', e.message);
     res.status(500).json({ message: 'Error al crear empresa' });
+  } finally {
+    try { pool && pool.close(); } catch (e) {}
   }
 }
 
@@ -265,116 +317,111 @@ export async function delistarEmpresa(req, res) {
   if (!isGuid(id)) return res.status(400).json({ message: 'ID inválido' });
   if (!justificacion?.trim()) return res.status(400).json({ message: 'Justificación requerida' });
 
+  const pool = await sql.connect(dbConfig);
+  const transaction = new sql.Transaction(pool);
+  
   try {
-    // Empresa + precio base
-    const emp = await queryDB(
-      `SELECT e.nombre, e.ticker, i.precio
-         FROM Empresa e
-         LEFT JOIN Inventario i ON i.id_empresa = e.id
-        WHERE e.id = @id`, { id }
-    );
-    if (!emp.length) return res.status(404).json({ message: 'Empresa no encontrada' });
+    await transaction.begin();
+    const request = new sql.Request(transaction);
+
+    // Validar empresa y obtener precio
+    const empRes = await request.query(`
+      SELECT e.nombre, e.ticker, i.precio
+      FROM Empresa e
+      LEFT JOIN Inventario i ON i.id_empresa = e.id
+      WHERE e.id = '${id}'
+    `);
+    
+    if (!empRes.recordset || empRes.recordset.length === 0) {
+      await transaction.rollback();
+      return res.status(404).json({ message: 'Empresa no encontrada' });
+    }
 
     const precio = (precio_liquidacion && Number(precio_liquidacion) > 0)
       ? Number(precio_liquidacion)
-      : Number(emp[0].precio) || 0;
+      : Number(empRes.recordset[0].precio) || 0;
 
     if (precio <= 0) {
-      return res.status(400).json({ message: 'No hay precio válido para liquidar (cargue un precio antes de liquidar)' });
+      await transaction.rollback();
+      return res.status(400).json({ 
+        message: 'No hay precio válido para liquidar (cargue un precio antes de liquidar)' 
+      });
     }
 
-    // Posiciones NETAS por alias 
-    const posiciones = await queryDB(`
+    // Obtener posiciones netas
+    const posRes = await request.query(`
       SELECT t.alias,
              SUM(CASE WHEN t.tipo='Compra' THEN t.cantidad
                       WHEN t.tipo='Venta'  THEN -t.cantidad ELSE 0 END) AS cantidad_neta
-        FROM Transaccion t
-       WHERE t.id_empresa = @id
-       GROUP BY t.alias
+      FROM Transaccion t
+      WHERE t.id_empresa = '${id}'
+      GROUP BY t.alias
       HAVING SUM(CASE WHEN t.tipo='Compra' THEN t.cantidad
                       WHEN t.tipo='Venta'  THEN -t.cantidad ELSE 0 END) > 0
-    `, { id });
+    `);
 
     let totalLiquidado = 0;
     let posicionesLiquidadas = 0;
 
-    for (const pos of posiciones) {
+    // Liquidar cada posición
+    for (const pos of (posRes.recordset || [])) {
       const cantidad = Number(pos.cantidad_neta);
 
-      // Datos del usuario wallet y portafolio
-      const u = await queryDB(
-        `SELECT id, id_billetera, id_portafolio FROM Usuario WHERE alias = @alias`,
-        { alias: pos.alias }
-      );
-      if (!u.length || !u[0].id_billetera || !u[0].id_portafolio) continue;
+      // Obtener datos del usuario
+      const uRes = await request.query(`
+        SELECT id, id_billetera, id_portafolio 
+        FROM Usuario 
+        WHERE alias = '${pos.alias}'
+      `);
       
-      const idBilletera = u[0].id_billetera;
-      const idPortafolio = u[0].id_portafolio;
-
+      if (!uRes.recordset || uRes.recordset.length === 0 || 
+          !uRes.recordset[0].id_billetera || !uRes.recordset[0].id_portafolio) {
+        continue;
+      }
+      
+      const idBilletera = uRes.recordset[0].id_billetera;
+      const idPortafolio = uRes.recordset[0].id_portafolio;
       const monto = cantidad * precio;
       
-      // Abonar al wallet
-      await queryDB(
-        `UPDATE Billetera SET fondos = fondos + @monto WHERE id = @id_billetera`,
-        { monto, id_billetera: idBilletera }
-      );
+      // Acreditar fondos
+      await request.query(`
+        UPDATE Billetera 
+        SET fondos = fondos + ${monto} 
+        WHERE id = '${idBilletera}'
+      `);
       
       // Devolver acciones a Tesorería
-      await queryDB(
-        `UPDATE Inventario
-            SET acciones_disponibles = acciones_disponibles + @cantidad
-          WHERE id_empresa = @id`,
-        { cantidad, id }
-      );
+      await request.query(`
+        UPDATE Inventario
+        SET acciones_disponibles = acciones_disponibles + ${cantidad}
+        WHERE id_empresa = '${id}'
+      `);
       
-      // Registrar la "venta" por delist 
-      await queryDB(
-        `INSERT INTO Transaccion (alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad)
-         VALUES (@alias, @id_portafolio, @id_billetera, @id, 'Venta', @precio, @cantidad)`,
-        {
-          alias: pos.alias,
-          id_portafolio: idPortafolio,
-          id_billetera: idBilletera,
-          id,
-          precio,
-          cantidad
-        }
-      );
+      // Registrar transacción de venta
+      await request.query(`
+        INSERT INTO Transaccion (id, alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad)
+        VALUES (NEWID(), '${pos.alias}', '${idPortafolio}', '${idBilletera}', '${id}', 'Venta', ${precio}, ${cantidad})
+      `);
 
-      // Actualizar SOLO las filas del portafolio específico Y empresa específica
-      const portafolioCheck = await queryDB(
-        `SELECT * FROM Portafolio WHERE id_empresa = @id_empresa`,
-        { id_empresa: id }
-      );
-      
-      console.log('[updateInventario] Portfolio check completed');
-      
-      // Intentar actualización específica
-      await queryDB(
-        `UPDATE p
-         SET p.acciones = 0 
-         FROM Portafolio p
-         INNER JOIN Usuario u ON u.id_portafolio = p.id
-         WHERE u.alias = @alias 
-         AND p.id_empresa = @id_empresa`,
-        { alias: pos.alias, id_empresa: id }
-      );
+      // Limpiar portafolio
+      await request.query(`
+        UPDATE p
+        SET p.acciones = 0 
+        FROM Portafolio p
+        INNER JOIN Usuario u ON u.id_portafolio = p.id
+        WHERE u.alias = '${pos.alias}' 
+        AND p.id_empresa = '${id}'
+      `);
 
       totalLiquidado += monto;
       posicionesLiquidadas++;
     }
-
-    // Marcar empresa como delistada 
-    await queryDB(
-      `EXEC sp_set_session_context @key = N'precio_liquidacion', @value = @precio`,
-      { precio }
-    );
     
-    await queryDB(
-      `UPDATE Empresa SET delistada = 1 WHERE id = @id`,
-      { id }
-    );
+    // Marcar empresa como delistada
+    await request.query(`UPDATE Empresa SET delistada = 1 WHERE id = '${id}'`);
 
+    await transaction.commit();
+    
     res.json({
       message: posicionesLiquidadas ? 'Empresa delistada con posiciones liquidadas' : 'Empresa delistada',
       posiciones_liquidadas: posicionesLiquidadas,
@@ -382,9 +429,13 @@ export async function delistarEmpresa(req, res) {
       precio_liquidacion: precio,
       justificacion
     });
+
   } catch (e) {
+    try { await transaction.rollback(); } catch (rollbackErr) {}
     console.error('[delistarEmpresa] Error delisting company:', e.message);
     res.status(500).json({ message: 'Error al delistar empresa' });
+  } finally {
+    try { pool && pool.close(); } catch (e) {}
   }
 }
 
@@ -409,82 +460,125 @@ export async function getHistorialPrecio(req, res) {
 export async function cargarPrecioManual(req, res) {
   const { id } = req.params;
   const { precio, fecha } = req.body;
+  
   if (!isGuid(id)) return res.status(400).json({ message: 'ID inválido' });
+  
   const p = Number(precio);
   if (!p || p <= 0) return res.status(400).json({ message: 'Precio inválido' });
-  if (!fecha)        return res.status(400).json({ message: 'Fecha requerida' });
+  if (!fecha) return res.status(400).json({ message: 'Fecha requerida' });
 
   const f = new Date(fecha);
   if (isNaN(f.getTime()) || f > new Date())
     return res.status(400).json({ message: 'Fecha inválida' });
 
+  const pool = await sql.connect(dbConfig);
+  const transaction = new sql.Transaction(pool);
+  
   try {
-    const inv = await queryDB(`SELECT 1 FROM Inventario WHERE id_empresa=@id`, { id });
-    if (inv.length === 0) {
-      await queryDB(
-        `INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
-         VALUES (@id, 0, 0, @p)`,
-        { id, p }
-      );
+    await transaction.begin();
+    const request = new sql.Request(transaction);
+
+    // Verificar si existe inventario
+    const inv = await request.query(`SELECT 1 FROM Inventario WHERE id_empresa='${id}'`);
+    
+    if (!inv.recordset || inv.recordset.length === 0) {
+      // Crear inventario
+      await request.query(`
+        INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
+        VALUES ('${id}', 0, 0, ${p})
+      `);
     } else {
-      await queryDB(`UPDATE Inventario SET precio=@p WHERE id_empresa=@id`, { id, p });
+      // Actualizar precio
+      await request.query(`UPDATE Inventario SET precio=${p} WHERE id_empresa='${id}'`);
     }
 
-    await queryDB(
-      `INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
-       SELECT @f, id_empresa, acciones_totales, acciones_disponibles, @p
-       FROM Inventario WHERE id_empresa=@id`,
-      { id, p, f }
-    );
+    // Insertar en historial
+    await request.query(`
+      INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
+      SELECT '${f.toISOString()}', id_empresa, acciones_totales, acciones_disponibles, ${p}
+      FROM Inventario WHERE id_empresa='${id}'
+    `);
 
+    await transaction.commit();
     res.json({ message: 'Precio cargado', precio: p, fecha: f });
+
   } catch (e) {
+    try { await transaction.rollback(); } catch (rollbackErr) {}
+    console.error('[cargarPrecioManual] Error loading price:', e.message);
     res.status(500).json({ message: 'Error al cargar precio' });
+  } finally {
+    try { pool && pool.close(); } catch (e) {}
   }
 }
 
 export async function cargarPreciosBatch(req, res) {
-  const { precios } = req.body; // [{ id_empresa, precio, fecha? }]
+  const { precios } = req.body;
   if (!Array.isArray(precios) || precios.length === 0)
     return res.status(400).json({ message: 'Datos inválidos' });
 
   let ok = 0, fail = 0;
   const errores = [];
 
+  // Procesar cada precio en su propia transacción para evitar que un error afecte a todos
   for (const it of precios) {
+    const pool = await sql.connect(dbConfig);
+    const transaction = new sql.Transaction(pool);
+    
     try {
       const id = it?.id_empresa;
       const p = Number(it?.precio);
-      if (!isGuid(id) || !p || p <= 0) throw new Error('dato');
+      
+      if (!isGuid(id) || !p || p <= 0) {
+        fail++;
+        errores.push({ id_empresa: id, error: 'datos inválidos' });
+        continue;
+      }
 
       let f = null;
       if (it.fecha) {
         const d = new Date(it.fecha);
-        if (isNaN(d.getTime()) || d > new Date()) throw new Error('fecha');
+        if (isNaN(d.getTime()) || d > new Date()) {
+          fail++;
+          errores.push({ id_empresa: id, error: 'fecha inválida' });
+          continue;
+        }
         f = d;
       }
 
-      const inv = await queryDB(`SELECT 1 FROM Inventario WHERE id_empresa=@id`, { id });
-      if (inv.length === 0) {
-        await queryDB(
-          `INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
-           VALUES (@id, 0, 0, @p)`,
-          { id, p }
-        );
+      await transaction.begin();
+      const request = new sql.Request(transaction);
+
+      // Verificar si existe inventario
+      const inv = await request.query(`SELECT 1 FROM Inventario WHERE id_empresa='${id}'`);
+      
+      if (!inv.recordset || inv.recordset.length === 0) {
+        // Crear inventario
+        await request.query(`
+          INSERT INTO Inventario (id_empresa, acciones_totales, acciones_disponibles, precio)
+          VALUES ('${id}', 0, 0, ${p})
+        `);
       } else {
-        await queryDB(`UPDATE Inventario SET precio=@p WHERE id_empresa=@id`, { id, p });
+        // Actualizar precio
+        await request.query(`UPDATE Inventario SET precio=${p} WHERE id_empresa='${id}'`);
       }
 
-      await queryDB(
-        `INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
-         SELECT ${f ? '@f' : 'SYSUTCDATETIME()'}, id_empresa, acciones_totales, acciones_disponibles, @p
-         FROM Inventario WHERE id_empresa=@id`,
-        f ? { id, p, f } : { id, p }
-      );
+      // Insertar en historial
+      const fechaSQL = f ? `'${f.toISOString()}'` : 'SYSUTCDATETIME()';
+      await request.query(`
+        INSERT INTO Inventario_Historial (fecha, id_empresa, acciones_totales, acciones_disponibles, precio)
+        SELECT ${fechaSQL}, id_empresa, acciones_totales, acciones_disponibles, ${p}
+        FROM Inventario WHERE id_empresa='${id}'
+      `);
 
+      await transaction.commit();
       ok++;
+
     } catch (e) {
-      fail++; errores.push({ id_empresa: it?.id_empresa, error: 'inválido' });
+      try { await transaction.rollback(); } catch (rollbackErr) {}
+      fail++;
+      errores.push({ id_empresa: it?.id_empresa, error: e.message || 'error desconocido' });
+    } finally {
+      try { pool && pool.close(); } catch (e) {}
     }
   }
 
@@ -542,170 +636,190 @@ export async function getUsuarioCuentas(req, res) {
   }
 }
 
-
 // Mercados habilitados por usuario 
 export async function habilitarMercado(req, res) {
-    const { id } = req.params; // id del usuario
-    const { id_mercado } = req.body;
-    
-    // Usar isGuid en lugar de guidRegex
-    if (!isGuid(id) || !isGuid(id_mercado)) {
-        return res.status(400).json({ message: 'IDs inválidos' });
+  const { id } = req.params;
+  const { id_mercado } = req.body;
+  
+  if (!isGuid(id) || !isGuid(id_mercado)) {
+    return res.status(400).json({ message: 'IDs inválidos' });
+  }
+
+  try {
+    const existe = await queryDB(
+      `SELECT * FROM Mercado_Habilitado WHERE id_usuario = @id_usuario AND id_mercado = @id_mercado`,
+      { id_usuario: id, id_mercado: id_mercado }
+    );
+
+    if (existe.length > 0) {
+      return res.status(400).json({ message: 'Mercado ya habilitado para este usuario' });
     }
 
-    try {
-        // Verificar si ya existe
-        const existe = await queryDB(
-            `SELECT * FROM Mercado_Habilitado WHERE id_usuario = @id_usuario AND id_mercado = @id_mercado`,
-            { id_usuario: id, id_mercado: id_mercado }
-        );
+    await queryDB(
+      `INSERT INTO Mercado_Habilitado (id_usuario, id_mercado) VALUES (@id_usuario, @id_mercado)`,
+      { id_usuario: id, id_mercado: id_mercado }
+    );
 
-        if (existe.length > 0) {
-            return res.status(400).json({ message: 'Mercado ya habilitado para este usuario' });
-        }
-
-        await queryDB(
-            `INSERT INTO Mercado_Habilitado (id_usuario, id_mercado) VALUES (@id_usuario, @id_mercado)`,
-            { id_usuario: id, id_mercado: id_mercado }
-        );
-
-        res.json({ message: 'Mercado habilitado exitosamente' });
-    } catch (error) {
-        console.error('[habilitarMercado] Error enabling market:', error.message);
-        res.status(500).json({ message: 'Error al habilitar mercado' });
-    }
+    res.json({ message: 'Mercado habilitado exitosamente' });
+  } catch (error) {
+    console.error('[habilitarMercado] Error enabling market:', error.message);
+    res.status(500).json({ message: 'Error al habilitar mercado' });
+  }
 }
 
 export async function deshabilitarMercado(req, res) {
-    const { id, idMercado } = req.params;
-    
-    // Usar isGuid en lugar de guidRegex
-    if (!isGuid(id) || !isGuid(idMercado)) {
-        return res.status(400).json({ message: 'IDs inválidos' });
-    }
+  const { id, idMercado } = req.params;
+  
+  if (!isGuid(id) || !isGuid(idMercado)) {
+    return res.status(400).json({ message: 'IDs inválidos' });
+  }
 
-    try {
-        await queryDB(
-            `DELETE FROM Mercado_Habilitado WHERE id_usuario = @id_usuario AND id_mercado = @id_mercado`,
-            { id_usuario: id, id_mercado: idMercado }
-        );
+  try {
+    await queryDB(
+      `DELETE FROM Mercado_Habilitado WHERE id_usuario = @id_usuario AND id_mercado = @id_mercado`,
+      { id_usuario: id, id_mercado: idMercado }
+    );
 
-        res.json({ message: 'Mercado deshabilitado exitosamente' });
-    } catch (error) {
-        console.error('[deshabilitarMercado] Error disabling market:', error.message);
-        res.status(500).json({ message: 'Error al deshabilitar mercado' });
-    }
+    res.json({ message: 'Mercado deshabilitado exitosamente' });
+  } catch (error) {
+    console.error('[deshabilitarMercado] Error disabling market:', error.message);
+    res.status(500).json({ message: 'Error al deshabilitar mercado' });
+  }
 }
 
 // Deshabilitar usuario (con liquidación)
 export async function deshabilitarUsuario(req, res) {
-    const { id } = req.params;
-    const { justificacion } = req.body;
+  const { id } = req.params;
+  const { justificacion } = req.body;
 
-    const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (!guidRegex.test(id)) {
-        return res.status(400).json({ message: 'ID de usuario inválido' });
+  if (!isGuid(id)) {
+    return res.status(400).json({ message: 'ID de usuario inválido' });
+  }
+
+  if (!justificacion || !justificacion.trim()) {
+    return res.status(400).json({ message: 'justificación requerida' });
+  }
+
+  const pool = await sql.connect(dbConfig);
+  const transaction = new sql.Transaction(pool);
+  
+  try {
+    await transaction.begin();
+    const request = new sql.Request(transaction);
+
+    // Verificar que el usuario existe y está habilitado
+    const usuario = await request.query(`
+      SELECT id, alias, habilitado, id_billetera 
+      FROM Usuario 
+      WHERE id = '${id}'
+    `);
+
+    if (!usuario.recordset || usuario.recordset.length === 0) {
+      await transaction.rollback();
+      return res.status(404).json({ message: 'Usuario no encontrado' });
     }
 
-    if (!justificacion || !justificacion.trim()) {
-        return res.status(400).json({ message: 'justificación requerida' });
+    if (!usuario.recordset[0].habilitado) {
+      await transaction.rollback();
+      return res.status(400).json({ message: 'usuario ya deshabilitado' });
     }
 
-    try {
-        // Verificar que el usuario existe y está habilitado
-        const usuario = await queryDB(
-            `SELECT id, alias, habilitado, id_billetera FROM Usuario WHERE id = @id_usuario`,
-            { id_usuario: id }
-        );
+    const alias = usuario.recordset[0].alias;
+    const idBilletera = usuario.recordset[0].id_billetera;
 
-        if (usuario.length === 0) {
-            return res.status(404).json({ message: 'Usuario no encontrado' });
-        }
+    // Obtener posiciones activas del usuario
+    const posiciones = await request.query(`
+      SELECT 
+        t.id_empresa,
+        SUM(CASE WHEN t.tipo = 'Compra' THEN t.cantidad 
+                 WHEN t.tipo = 'Venta' THEN -t.cantidad 
+                 ELSE 0 END) AS cantidad_net
+      FROM Transaccion t
+      WHERE t.alias = '${alias}'
+      GROUP BY t.id_empresa
+      HAVING SUM(CASE WHEN t.tipo = 'Compra' THEN t.cantidad 
+                      WHEN t.tipo = 'Venta' THEN -t.cantidad 
+                      ELSE 0 END) > 0
+    `);
 
-        if (!usuario[0].habilitado) {
-            return res.status(400).json({ message: 'usuario ya deshabilitado' });
-        }
+    let totalLiquidado = 0;
+    let posicionesLiquidadas = 0;
 
-        const alias = usuario[0].alias;
-        const idBilletera = usuario[0].id_billetera;
+    // Liquidar cada posición al precio actual
+    for (const pos of (posiciones.recordset || [])) {
+      const cantidad = Number(pos.cantidad_net);
 
-        // Obtener posiciones activas del usuario
-        const posiciones = await queryDB(`
-            SELECT 
-                t.id_empresa,
-                SUM(CASE WHEN t.tipo = 'Compra' THEN t.cantidad WHEN t.tipo = 'Venta' THEN -t.cantidad ELSE 0 END) AS cantidad_net
-            FROM Transaccion t
-            WHERE t.alias = @alias
-            GROUP BY t.id_empresa
-            HAVING SUM(CASE WHEN t.tipo = 'Compra' THEN t.cantidad WHEN t.tipo = 'Venta' THEN -t.cantidad ELSE 0 END) > 0
-        `, { alias: alias });
+      // Obtener precio actual
+      const inventario = await request.query(`
+        SELECT precio 
+        FROM Inventario 
+        WHERE id_empresa = '${pos.id_empresa}'
+      `);
 
-        let totalLiquidado = 0;
-        let posicionesLiquidadas = 0;
+      if (inventario.recordset && inventario.recordset.length > 0) {
+        const precio = Number(inventario.recordset[0].precio);
+        const montoLiquidacion = cantidad * precio;
 
-        // Liquidar cada posición al precio actual
-        for (let i = 0; i < posiciones.length; i++) {
-            const pos = posiciones[i];
-            const cantidad = pos.cantidad_net;
+        // Abonar al wallet
+        await request.query(`
+          UPDATE Billetera 
+          SET fondos = fondos + ${montoLiquidacion} 
+          WHERE id = '${idBilletera}'
+        `);
 
-            // Obtener precio actual
-            const inventario = await queryDB(
-                `SELECT precio FROM Inventario WHERE id_empresa = @id_empresa`,
-                { id_empresa: pos.id_empresa }
-            );
+        // Devolver acciones al inventario
+        await request.query(`
+          UPDATE Inventario 
+          SET acciones_disponibles = acciones_disponibles + ${cantidad} 
+          WHERE id_empresa = '${pos.id_empresa}'
+        `);
 
-            if (inventario.length > 0) {
-                const precio = inventario[0].precio;
-                const montoLiquidacion = cantidad * precio;
+        // Registrar transacción de liquidación
+        await request.query(`
+          INSERT INTO Transaccion (id, alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad)
+          VALUES (
+            NEWID(), 
+            '${alias}', 
+            (SELECT id_portafolio FROM Usuario WHERE id = '${id}'), 
+            '${idBilletera}', 
+            '${pos.id_empresa}', 
+            'Venta', 
+            ${precio}, 
+            ${cantidad}
+          )
+        `);
 
-                // Abonar al wallet
-                await queryDB(
-                    `UPDATE Billetera SET fondos = fondos + @monto WHERE id = @id_billetera`,
-                    { monto: montoLiquidacion, id_billetera: idBilletera }
-                );
-
-                // Devolver acciones al inventario
-                await queryDB(
-                    `UPDATE Inventario SET acciones_disponibles = acciones_disponibles + @cantidad WHERE id_empresa = @id_empresa`,
-                    { cantidad: cantidad, id_empresa: pos.id_empresa }
-                );
-
-                // Registrar transacción de liquidación
-                await queryDB(
-                    `INSERT INTO Transaccion (alias, id_portafolio, id_billetera, id_empresa, tipo, precio, cantidad)
-                     VALUES (@alias, (SELECT id_portafolio FROM Usuario WHERE id = @id_usuario), @id_billetera, @id_empresa, 'Venta', @precio, @cantidad)`,
-                    {
-                        alias: alias,
-                        id_usuario: id,
-                        id_billetera: idBilletera,
-                        id_empresa: pos.id_empresa,
-                        precio: precio,
-                        cantidad: cantidad
-                    }
-                );
-
-                totalLiquidado += montoLiquidacion;
-                posicionesLiquidadas++;
-            }
-        }
-
-        // Deshabilitar usuario
-        await queryDB(
-            `UPDATE Usuario SET habilitado = 0, deshabilitado_justificacion = @justificacion WHERE id = @id_usuario`,
-            { justificacion: justificacion, id_usuario: id }
-        );
-
-        res.json({
-            message: 'Usuario deshabilitado exitosamente',
-            posiciones_liquidadas: posicionesLiquidadas,
-            total_liquidado: totalLiquidado,
-            justificacion: justificacion
-        });
-    } catch (error) {
-        console.error('[deshabilitarUsuario] Error disabling user:', error.message);
-        res.status(500).json({ message: 'Error al deshabilitar usuario' });
+        totalLiquidado += montoLiquidacion;
+        posicionesLiquidadas++;
+      }
     }
+
+    // Deshabilitar usuario (escapar comillas en justificación)
+    const justificacionEscaped = justificacion.replace(/'/g, "''");
+    await request.query(`
+      UPDATE Usuario 
+      SET habilitado = 0, deshabilitado_justificacion = '${justificacionEscaped}' 
+      WHERE id = '${id}'
+    `);
+
+    await transaction.commit();
+    
+    res.json({
+      message: 'Usuario deshabilitado exitosamente',
+      posiciones_liquidadas: posicionesLiquidadas,
+      total_liquidado: totalLiquidado,
+      justificacion: justificacion
+    });
+
+  } catch (error) {
+    try { await transaction.rollback(); } catch (e) {}
+    console.error('[deshabilitarUsuario] Error disabling user:', error.message);
+    res.status(500).json({ message: 'Error al deshabilitar usuario' });
+  } finally {
+    try { pool && pool.close(); } catch (e) {}
+  }
 }
+
 // Rankings
 export async function getTopWallet(_req, res) {
   try {
@@ -724,7 +838,6 @@ export async function getTopWallet(_req, res) {
 
 export async function getTopAcciones(_req, res) {
   try {
-    // valor en acciones = suma(posición neta * precio actual)
     const traders = await queryDB(
       `SELECT alias FROM Usuario WHERE rol='Trader' AND habilitado=1`
     );

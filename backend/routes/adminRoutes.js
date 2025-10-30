@@ -8,6 +8,10 @@ import { verifyToken, verifyRole } from '../middlewares/authMiddleware.js';
 // Proteger todas las rutas de admin requiriendo token válido y rol 'Admin'
 router.use(verifyToken);
 router.use(verifyRole('Admin'));
+
+router.get('/billetera/:id_billetera', getBilletera);
+router.put('/billetera/:id_billetera', updateBilletera);
+
 router.post('/mercados', createMercado);
 router.put('/mercados/:id', updateMercado);
 router.delete('/mercados/:id', deleteMercado);
