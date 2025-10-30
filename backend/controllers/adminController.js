@@ -366,6 +366,11 @@ export async function delistarEmpresa(req, res) {
 
     // Marcar empresa como delistada 
     await queryDB(
+      `EXEC sp_set_session_context @key = N'precio_liquidacion', @value = @precio`,
+      { precio }
+    );
+    
+    await queryDB(
       `UPDATE Empresa SET delistada = 1 WHERE id = @id`,
       { id }
     );

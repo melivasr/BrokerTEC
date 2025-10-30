@@ -50,15 +50,20 @@ export default async function createTriggers() {
             IF UPDATE(delistada)
             BEGIN
                 DECLARE @usuario_ejecutor NVARCHAR(128);
+                DECLARE @precio_liquidacion DECIMAL(19,4);
+                
                 SET @usuario_ejecutor = ISNULL(CAST(SESSION_CONTEXT(N'usuario_admin') AS NVARCHAR(128)), 'ADMIN');
+                SET @precio_liquidacion = ISNULL(CAST(SESSION_CONTEXT(N'precio_liquidacion') AS DECIMAL(19,4)), 0);
                 
                 INSERT INTO Auditoria (usuario_ejecutor, accion, detalles)
                 SELECT 
                     @usuario_ejecutor,
                     'Delistar empresa',
-                    'Empresa: ' + i.ticker + ' - ' + i.nombre
+                    'Empresa: ' + i.ticker + ' - ' + i.nombre + 
+                    ', Precio liquidación: $' + CAST(ISNULL(NULLIF(@precio_liquidacion, 0), ISNULL(inv.precio, 0)) AS NVARCHAR(20))
                 FROM inserted i
                 INNER JOIN deleted d ON i.id = d.id
+                LEFT JOIN Inventario inv ON inv.id_empresa = i.id
                 WHERE i.delistada = 1 AND d.delistada = 0;
             END
         END;
