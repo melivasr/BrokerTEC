@@ -76,6 +76,13 @@ export default function Operar() {
         setLoading(false);
         return;
       }
+      // Verificar primero si hay inventario disponible
+      if (cantidad > maxPorInventario) {
+        setError("inventario insuficiente");
+        setLoading(false);
+        return;
+      }
+      // Luego verificar si hay saldo suficiente
       if (maxComprable < cantidad) {
         setError("saldo insuficiente");
         setLoading(false);
@@ -83,11 +90,6 @@ export default function Operar() {
       }
       if (maxComprable <= 0) {
         setError("saldo insuficiente");
-        setLoading(false);
-        return;
-      }
-      if (cant > maxComprable) {
-        setError("inventario insuficiente");
         setLoading(false);
         return;
       }

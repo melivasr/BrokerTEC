@@ -37,7 +37,7 @@ export async function getHomeTraderData(req, res) {
                 ) AS variacion
          FROM Empresa e
          JOIN Inventario i ON i.id_empresa = e.id
-         WHERE e.id_mercado = @mercado_id
+         WHERE e.id_mercado = @mercado_id AND e.delistada = 0
          ORDER BY capitalizacion DESC`,
         { mercado_id: mercado.id }
       );
