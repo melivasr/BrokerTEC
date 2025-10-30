@@ -110,6 +110,15 @@ entity "Empresa_favorita" as Empresa_favorita {
 	*id_usuario : UNIQUEIDENTIFIER <<FK>>
 }
 
+entity "Auditoria" as Auditoria {
+	*id : UNIQUEIDENTIFIER
+	fecha : DATETIME2
+	usuario_ejecutor : NVARCHAR
+	usuario_afectado : NVARCHAR
+	accion : NVARCHAR
+	detalles : NVARCHAR
+}
+
 ' ===== Relaciones =====
 Usuario ||--o{ Usuario : Habilita (Admin)
 Usuario ||--o{ Usuario : Deshabilita (Admin)
