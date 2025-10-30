@@ -118,3 +118,16 @@ export async function changePassword({ id, old, new: newPassword }) {
     throw error.response?.data?.message || "Error al cambiar contraseña";
   }
 }
+
+// Verificar estado actual del usuario
+export async function verifyUserStatus(userId) {
+  try {
+    const response = await axios.get(
+      `${BASE}/api/auth/${userId}/verify-status`,
+      { headers: authHeader() }
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data?.message || "Error al verificar estado del usuario";
+  }
+}

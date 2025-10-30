@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { queryDB } from "../config/db.js";
+import { isUserEnabled } from "../utils/userHelpers.js";
 import { v4 as uuidv4 } from "uuid";
 
 // Registro de usuario
@@ -110,5 +111,31 @@ export async function changePassword(req, res) {
     res.json({ message: "Contraseña cambiada correctamente" });
   } catch (error) {
     res.status(500).json({ message: "Error al cambiar contraseña", error });
+  }
+}
+
+// Verificar estado actual del usuario (usado para detectar si fue habilitado/deshabilitado)
+export async function verifyUserStatus(req, res) {
+  const { id } = req.params;
+  try {
+    const users = await queryDB(
+      `SELECT id, alias, nombre, correo, rol, habilitado, id_billetera, id_portafolio FROM Usuario WHERE id=@id`,
+      { id }
+    );
+    if (users.length === 0) return res.status(404).json({ message: "Usuario no encontrado" });
+    
+    const user = users[0];
+    const habilitado = await isUserEnabled(id);
+    
+    res.json({ 
+      user: {
+        ...user,
+        habilitado: habilitado ? 1 : 0
+      },
+      statusChanged: !habilitado // true si está deshabilitado (debe salir)
+    });
+  } catch (error) {
+    console.error('[verifyUserStatus] Error checking user status:', error.message);
+    res.status(500).json({ message: "Error al verificar estado del usuario", error });
   }
 }

@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { queryDB } from "../config/db.js";
+import { isUserEnabled } from "../utils/userHelpers.js";
 
 export function verifyToken(req, res, next) {
   const authHeader = req.headers["authorization"];
@@ -66,5 +67,25 @@ export async function verifyBilleterable(req, res, next) {
   } catch (err) {
     console.error("[verifyBilleterable] Error validating billetera:", err.message);
     res.status(500).json({ message: "Error en validación", error: err.message });
+  }
+}
+
+// Middleware para verificar que el usuario está habilitado
+export async function verifyUserEnabled(req, res, next) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ message: "Usuario no autenticado" });
+    }
+
+    const enabled = await isUserEnabled(userId);
+    if (!enabled) {
+      return res.status(403).json({ message: "Tu cuenta está deshabilitada. No puedes realizar esta acción." });
+    }
+
+    next();
+  } catch (err) {
+    console.error("[verifyUserEnabled] Error checking user status:", err.message);
+    res.status(500).json({ message: "Error al verificar estado del usuario" });
   }
 }

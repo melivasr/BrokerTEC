@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
-import { getCurrentUser,updateUser , updateUserById, deleteUser, changePassword, logout } from "../../services/authService";
+import { getCurrentUser,updateUser , updateUserById, deleteUser, changePassword, logout, verifyUserStatus } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 
 export default function Perfil() {
@@ -32,6 +32,39 @@ export default function Perfil() {
       telefono: u?.telefono || ""
     });
   }, []);
+
+  // Verificar periódicamente si el estado del usuario cambió (habilitar/deshabilitar)
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const checkUserStatus = async () => {
+      try {
+        const status = await verifyUserStatus(user.id);
+        const nuevoHabilitado = status.user.habilitado === 1 || status.user.habilitado === true;
+        const eraDeshabilitado = user.habilitado === 0 || user.habilitado === false;
+        
+        // Si era deshabilitado y ahora está habilitado, hacer logout y redirigir
+        if (eraDeshabilitado && nuevoHabilitado) {
+          setSuccess("Tu cuenta ha sido habilitada. Debes volver a ingresar.");
+          setTimeout(() => {
+            logout();
+            navigate("/login");
+          }, 2000);
+        }
+        
+        // Si cambió el estado, actualizar el user local
+        if (nuevoHabilitado !== eraDeshabilitado) {
+          setUser({ ...user, habilitado: nuevoHabilitado ? 1 : 0 });
+        }
+      } catch (err) {
+        // Si hay error de autenticación, no hacer nada (manejo normal)
+      }
+    };
+    
+    // Verificar cada 1 segundos
+    const interval = setInterval(checkUserStatus, 1000);
+    return () => clearInterval(interval);
+  }, [user, navigate]);
 
   if (!user) return <div>Cargando perfil...</div>;
 
@@ -125,7 +158,7 @@ export default function Perfil() {
               <p><b>País de origen:</b> {user.pais_origen}</p>
               <p><b>Teléfono:</b> {user.telefono}</p>
               <button onClick={() => setEditMode(true)} style={{ marginTop: 12 }} className="btn-block" disabled={usuarioDeshabilitado}>Editar datos</button>
-              <button onClick={handleDelete} style={{ marginLeft: 12, color: 'red' }} className="small-hide-mobile" disabled={usuarioDeshabilitado}>Eliminar cuenta</button>
+              <button onClick={handleDelete} style={{ marginTop: 8, color: 'red' }} className="btn-block" disabled={usuarioDeshabilitado}>Eliminar cuenta</button>
             </>
           ) : (
             <form onSubmit={handleUpdate}>
@@ -143,7 +176,7 @@ export default function Perfil() {
               <label>Teléfono</label>
               <input className="form-control" type="text" value={form.telefono} onChange={e => setForm({ ...form, telefono: e.target.value })} />
               <button type="submit" style={{ marginTop: 12 }} className="btn-block">Guardar cambios</button>
-              <button type="button" onClick={() => setEditMode(false)} style={{ marginLeft: 12 }} className="small-hide-mobile">Cancelar</button>
+              <button type="button" onClick={() => setEditMode(false)} style={{ marginTop: 8 }} className="btn-block">Cancelar</button>
             </form>
           )}
           <hr style={{ margin: '24px 0' }} />
