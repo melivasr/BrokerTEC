@@ -101,7 +101,6 @@ entity "Portafolio_historial" as Portafolio_historial {
 	*fecha : DATETIME2
 	*id_portafolio : UNIQUEIDENTIFIER <<FK>>
 	' id_empresa referencia a Empresa
-	id_empresa : UNIQUEIDENTIFIER <<FK>>
 	acciones : INT
 }
 
