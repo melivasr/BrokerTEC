@@ -31,9 +31,16 @@ export async function getHomeTraderData(req, res) {
                 i.precio AS precio_actual,
                 i.acciones_disponibles * i.precio AS capitalizacion,
                 i.acciones_disponibles,
-                i.precio AS precio_actual,
                 (
-                  i.precio - ISNULL((SELECT TOP 1 ih.precio FROM Inventario_Historial ih WHERE ih.id_empresa = e.id AND ih.fecha < SYSDATETIME() ORDER BY ih.fecha DESC), 0)
+                  i.precio - ISNULL((
+                    SELECT precio 
+                    FROM (
+                      SELECT ih.precio, ROW_NUMBER() OVER (ORDER BY ih.fecha DESC) AS rn
+                      FROM Inventario_Historial ih 
+                      WHERE ih.id_empresa = e.id
+                    ) ranked
+                    WHERE rn = 2
+                  ), i.precio)
                 ) AS variacion
          FROM Empresa e
          JOIN Inventario i ON i.id_empresa = e.id

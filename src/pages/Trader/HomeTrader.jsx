@@ -74,7 +74,7 @@ export default function HomeTrader() {
             <ul>
               {favoritas.map(f => (
                 <li key={f.id} style={{ marginBottom: 8 }}>
-                  <b>{f.nombre}</b> ({f.ticker}) - Precio: ${f.precio_actual ?? 'N/A'}
+                  <b>{f.nombre}</b> ({f.ticker}) - Precio: {f.precio_actual ? `$${f.precio_actual}` : 'sin datos de capitalización'}
                   <button onClick={() => window.location.href = `/trader/empresa/${f.id}`} style={{ marginLeft: 8, marginBottom: 8 }} className="btn-block">Ver</button>
                   <button onClick={() => window.location.href = `/trader/operar/${f.id}`} style={{ marginLeft: 8 }} className="btn-block" disabled={usuarioDeshabilitado}>Operar</button>
                 </li>
@@ -109,8 +109,8 @@ export default function HomeTrader() {
             <ul style={{ marginTop: 16 }}>
               {mercado.empresas?.map((e) => (
                 <li key={e.id} style={{ marginBottom: 8 }}>
-                  <b>{e.nombre}</b> ({e.ticker}) - Capitalización: ${e.capitalizacion?.toLocaleString?.() ?? 'N/A'}<br/>
-                  Precio actual: ${e.precio_actual ?? e.precio ?? 'N/A'} | Variación: {e.variacion !== null && e.variacion !== undefined ? (e.variacion > 0 ? '+' : '') + e.variacion : 'N/A'}<br/>
+                  <b>{e.nombre}</b> ({e.ticker}) - Capitalización: {e.capitalizacion ? `$${e.capitalizacion?.toLocaleString?.() ?? e.capitalizacion}` : 'sin datos de capitalización'}<br/>
+                  Precio actual: {(e.precio_actual ?? e.precio) ? `$${e.precio_actual ?? e.precio}` : 'sin datos de capitalización'} | Variación: {e.variacion !== null && e.variacion !== undefined ? (e.variacion > 0 ? '+' : '') + e.variacion : 'sin datos'}<br/>
                   <button onClick={() => window.location.href = `/trader/empresa/${e.id}`} style={{ marginBottom: 8, marginLeft: 8 }} className="btn-block">Ver Empresa</button>
                   <button onClick={() => window.location.href = `/trader/operar/${e.id}`} style={{ marginLeft: 8 }} className="btn-block" disabled={usuarioDeshabilitado}>Operar</button>
                 </li>
