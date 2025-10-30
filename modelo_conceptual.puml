@@ -3,6 +3,7 @@
 hide circle
 hide methods
 hide stereotypes
+left to right direction
 
 ' ===== Entidades =====
 entity "Usuario" as Usuario {
