@@ -70,7 +70,7 @@ export default async function createTriggers() {
     `);
     console.log('Trigger Empresa creado');
 
-    // Deshabilitar Usuario
+    // Deshabilitar/Habilitar Usuario
     await queryDB(`
         CREATE TRIGGER TR_Auditoria_Usuario_Deshabilitar
         ON Usuario
@@ -83,6 +83,7 @@ export default async function createTriggers() {
                 DECLARE @usuario_ejecutor NVARCHAR(128);
                 SET @usuario_ejecutor = ISNULL(CAST(SESSION_CONTEXT(N'usuario_admin') AS NVARCHAR(128)), 'ADMIN');
                 
+                -- Registrar cuando se deshabilita un usuario
                 INSERT INTO Auditoria (usuario_ejecutor, usuario_afectado, accion, detalles)
                 SELECT 
                     @usuario_ejecutor,
@@ -92,6 +93,17 @@ export default async function createTriggers() {
                 FROM inserted i
                 INNER JOIN deleted d ON i.id = d.id
                 WHERE i.habilitado = 0 AND d.habilitado = 1;
+                
+                -- Registrar cuando se habilita un usuario
+                INSERT INTO Auditoria (usuario_ejecutor, usuario_afectado, accion, detalles)
+                SELECT 
+                    @usuario_ejecutor,
+                    i.alias,
+                    'Habilitar usuario',
+                    'Usuario rehabilitado exitosamente'
+                FROM inserted i
+                INNER JOIN deleted d ON i.id = d.id
+                WHERE i.habilitado = 1 AND d.habilitado = 0;
             END
         END;
     `);

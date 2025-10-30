@@ -107,6 +107,15 @@ export async function deshabilitarUsuario(id, justificacion) {
     return res.data;
 }
 
+export async function habilitarUsuario(id) {
+    const res = await axios.post(
+        `/api/admin/usuarios/${id}/habilitar`,
+        {},
+        { headers: authHeader() }
+    );
+    return res.data;
+}
+
 export async function getTopWallet() {
     const res = await axios.get('/api/admin/usuarios/top-wallet', { headers: authHeader() });
     return res.data;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  getUsuarios, getUsuarioCuentas, deshabilitarUsuario, getTopWallet, getTopAcciones, 
+  getUsuarios, getUsuarioCuentas, deshabilitarUsuario, habilitarUsuario, getTopWallet, getTopAcciones, 
   habilitarMercado, deshabilitarMercado, updateBilletera
 } from '../../services/adminService';
 import {getMercados} from '../../services/analistaService';
@@ -15,7 +15,7 @@ const modalInput = (isMobile) => ({
   fontSize: isMobile ? '16px' : '14px'
 });
 
-const UsuariosTable = ({ usuarios, isMobile, onVerCuentas, onEditar, onDeshabilitar }) => (
+const UsuariosTable = ({ usuarios, isMobile, onVerCuentas, onEditar, onDeshabilitar, onHabilitar }) => (
   isMobile ? (
     <div style={{ marginBottom: 32 }}>
       {usuarios.map((u) => (
@@ -33,10 +33,17 @@ const UsuariosTable = ({ usuarios, isMobile, onVerCuentas, onEditar, onDeshabili
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
             <button onClick={() => onVerCuentas(u)} className="btn-block">Ver Cuentas</button>
             <button onClick={() => onEditar(u)} className="btn-block">Editar</button>
-            <button onClick={() => onDeshabilitar(u)} disabled={!u.habilitado} className="btn-block"
-              style={{ background: u.habilitado ? '#dc3545' : '#ccc', color: 'white', cursor: u.habilitado ? 'pointer' : 'not-allowed' }}>
-              Deshabilitar
-            </button>
+            {u.habilitado ? (
+              <button onClick={() => onDeshabilitar(u)} className="btn-block"
+                style={{ background: '#dc3545', color: 'white', cursor: 'pointer' }}>
+                Deshabilitar
+              </button>
+            ) : (
+              <button onClick={() => onHabilitar(u)} className="btn-block"
+                style={{ background: '#28a745', color: 'white', cursor: 'pointer' }}>
+                Habilitar
+              </button>
+            )}
           </div>
         </div>
       ))}
@@ -49,7 +56,7 @@ const UsuariosTable = ({ usuarios, isMobile, onVerCuentas, onEditar, onDeshabili
           <th style={{ ...tableCell, textAlign: 'left' }}>Nombre</th>
           <th style={{ ...tableCell, textAlign: 'left' }}>Rol</th>
           <th style={{ ...tableCell, textAlign: 'center' }}>Estado</th>
-          <th style={{ ...tableCell, textAlign: 'center', width: 300 }}>Acciones</th>
+          <th style={{ ...tableCell, textAlign: 'center', width: 350 }}>Acciones</th>
         </tr>
       </thead>
       <tbody>
@@ -70,11 +77,19 @@ const UsuariosTable = ({ usuarios, isMobile, onVerCuentas, onEditar, onDeshabili
             <td style={{ ...tableCell, textAlign: 'center' }}>
               <button onClick={() => onVerCuentas(u)} style={{ marginRight: 8, padding: '6px 12px' }}>Ver Cuentas</button>
               <button onClick={() => onEditar(u)} style={{ marginRight: 8, padding: '6px 12px' }}>Editar</button>
-              <button onClick={() => onDeshabilitar(u)} disabled={!u.habilitado}
-                style={{ background: u.habilitado ? '#dc3545' : '#ccc', color: 'white', padding: '6px 12px', 
-                border: 'none', borderRadius: 4, cursor: u.habilitado ? 'pointer' : 'not-allowed' }}>
-                Deshabilitar
-              </button>
+              {u.habilitado ? (
+                <button onClick={() => onDeshabilitar(u)}
+                  style={{ background: '#dc3545', color: 'white', padding: '6px 12px', 
+                  border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                  Deshabilitar
+                </button>
+              ) : (
+                <button onClick={() => onHabilitar(u)}
+                  style={{ background: '#28a745', color: 'white', padding: '6px 12px', 
+                  border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                  Habilitar
+                </button>
+              )}
             </td>
           </tr>
         ))}
@@ -380,6 +395,17 @@ const UsuariosCuentas = () => {
     }
   };
 
+  const handleHabilitar = async (u) => {
+    setError(''); setSuccess('');
+    try {
+      await habilitarUsuario(u.id);
+      setSuccess(`Usuario ${u.alias} habilitado exitosamente`);
+      fetchUsuarios(); fetchTops();
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Error al habilitar usuario');
+    }
+  };
+
   const inputStyle = modalInput(isMobile);
 
   return (
@@ -405,6 +431,7 @@ const UsuariosCuentas = () => {
             setShowEditModal(true); 
           }}
           onDeshabilitar={(u) => { setSelectedUsuario(u); setShowModal(true); }}
+          onHabilitar={handleHabilitar}
         />
 
         {cuentas && selectedUsuario?.rol === 'Trader' && cuentas.wallet && (

@@ -5,6 +5,17 @@ import sql from 'mssql';
 const GUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 const isGuid = (v) => GUID.test(String(v || ''));
 
+// Obtener el alias del admin autenticado
+async function getAdminAlias(adminId) {
+  try {
+    const rows = await queryDB('SELECT alias FROM Usuario WHERE id=@id', { id: adminId });
+    return rows.length > 0 ? rows[0].alias : 'ADMIN';
+  } catch (e) {
+    console.error('Error getting admin alias:', e.message);
+    return 'ADMIN';
+  }
+}
+
 // Actualizar billetera de un usuario
 export async function updateBilletera(req, res) {
   const { id_billetera } = req.params;
@@ -29,6 +40,10 @@ export async function updateBilletera(req, res) {
   try {
     await transaction.begin();
     const request = new sql.Request(transaction);
+
+    // Obtener alias del admin
+    const adminAlias = await getAdminAlias(req.user.id);
+    await request.query(`EXEC sp_set_session_context @key = N'usuario_admin', @value = N'${adminAlias.replace(/'/g, "''")}'`);
 
     // Verificar que existe la billetera
     const ex = await request.query(`SELECT 1 FROM Billetera WHERE id='${id_billetera}'`);
@@ -326,6 +341,10 @@ export async function delistarEmpresa(req, res) {
     await transaction.begin();
     const request = new sql.Request(transaction);
 
+    // Obtener alias del admin
+    const adminAlias = await getAdminAlias(req.user.id);
+    await request.query(`EXEC sp_set_session_context @key = N'usuario_admin', @value = N'${adminAlias.replace(/'/g, "''")}'`);
+
     // Validar empresa y obtener precio
     const empRes = await request.query(`
       SELECT e.nombre, e.ticker, i.precio
@@ -478,6 +497,10 @@ export async function cargarPrecioManual(req, res) {
     await transaction.begin();
     const request = new sql.Request(transaction);
 
+    // Obtener alias del admin
+    const adminAlias = await getAdminAlias(req.user.id);
+    await request.query(`EXEC sp_set_session_context @key = N'usuario_admin', @value = N'${adminAlias.replace(/'/g, "''")}'`);
+
     // Verificar si existe inventario
     const inv = await request.query(`SELECT 1 FROM Inventario WHERE id_empresa='${id}'`);
     
@@ -546,6 +569,10 @@ export async function cargarPreciosBatch(req, res) {
 
       await transaction.begin();
       const request = new sql.Request(transaction);
+
+      // Obtener alias del admin
+      const adminAlias = await getAdminAlias(req.user.id);
+      await request.query(`EXEC sp_set_session_context @key = N'usuario_admin', @value = N'${adminAlias.replace(/'/g, "''")}'`);
 
       // Verificar si existe inventario
       const inv = await request.query(`SELECT 1 FROM Inventario WHERE id_empresa='${id}'`);
@@ -704,6 +731,10 @@ export async function deshabilitarUsuario(req, res) {
     await transaction.begin();
     const request = new sql.Request(transaction);
 
+    // Obtener alias del admin
+    const adminAlias = await getAdminAlias(req.user.id);
+    await request.query(`EXEC sp_set_session_context @key = N'usuario_admin', @value = N'${adminAlias.replace(/'/g, "''")}'`);
+
     // Verificar que el usuario existe y está habilitado
     const usuario = await request.query(`
       SELECT id, alias, habilitado, id_billetera 
@@ -812,6 +843,62 @@ export async function deshabilitarUsuario(req, res) {
     try { await transaction.rollback(); } catch (e) {}
     console.error('[deshabilitarUsuario] Error disabling user:', error.message);
     res.status(500).json({ message: 'Error al deshabilitar usuario' });
+  } 
+}
+
+// Habilitar usuario
+export async function habilitarUsuario(req, res) {
+  const { id } = req.params;
+
+  if (!isGuid(id)) {
+    return res.status(400).json({ message: 'ID de usuario inválido' });
+  }
+
+  const pool = await sql.connect(dbConfig);
+  const transaction = new sql.Transaction(pool);
+  
+  try {
+    await transaction.begin();
+    const request = new sql.Request(transaction);
+
+    // Obtener alias del admin
+    const adminAlias = await getAdminAlias(req.user.id);
+    await request.query(`EXEC sp_set_session_context @key = N'usuario_admin', @value = N'${adminAlias.replace(/'/g, "''")}'`);
+
+    // Verificar que el usuario existe y está deshabilitado
+    const usuario = await request.query(`
+      SELECT id, alias, habilitado 
+      FROM Usuario 
+      WHERE id = '${id}'
+    `);
+
+    if (!usuario.recordset || usuario.recordset.length === 0) {
+      await transaction.rollback();
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    if (usuario.recordset[0].habilitado) {
+      await transaction.rollback();
+      return res.status(400).json({ message: 'Usuario ya habilitado' });
+    }
+
+    // Habilitar usuario
+    await request.query(`
+      UPDATE Usuario 
+      SET habilitado = 1, deshabilitado_justificacion = NULL 
+      WHERE id = '${id}'
+    `);
+
+    await transaction.commit();
+    
+    res.json({
+      message: 'Usuario habilitado exitosamente'
+    });
+
+  } catch (error) {
+    try { await transaction.rollback(); } catch (e) {}
+    console.error('[habilitarUsuario] Error enabling user:', error.message);
+    res.status(500).json({ message: 'Error al habilitar usuario' });
   } 
 }
 
