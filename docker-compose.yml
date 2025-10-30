@@ -14,8 +14,8 @@ services:
         depends_on:
             - db
         entrypoint: >
-            sh -c "until /opt/mssql-tools18/bin/sqlcmd -S mssql,1433 -U SA -P 'Str0ng!Passw0rd' -C -Q 'SELECT 1;'; do sleep 1; done &&
-            /opt/mssql-tools18/bin/sqlcmd -S mssql,1433 -U SA -P 'Str0ng!Passw0rd' -C -Q 'DROP DATABASE IF EXISTS BrokerTEC; CREATE DATABASE BrokerTEC;'"
+            sh -c "until /opt/mssql-tools18/bin/sqlcmd -S db -U SA -P 'Str0ng!Passw0rd' -C -Q 'SELECT 1;'; do sleep 1; done &&
+            /opt/mssql-tools18/bin/sqlcmd -S db -U SA -P 'Str0ng!Passw0rd' -C -Q 'DROP DATABASE IF EXISTS BrokerTEC; CREATE DATABASE BrokerTEC;'"
 
     db-init2:
         build:
@@ -44,6 +44,7 @@ services:
             DB_USER: sa
             DB_PASS: "${DB_PASS}"
             DB_NAME: "${DB_NAME}"
+            JWT_SECRET: "${JWT_SECRET}"
             PORT: 3001
         ports:
             - "3001:3001"
@@ -56,5 +57,6 @@ services:
             - backend
         environment:
             REACT_APP_API_URL: backend
+            JWT_SECRET: "${JWT_SECRET}"
         ports:
             - "3000:80"

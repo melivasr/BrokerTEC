@@ -15,4 +15,4 @@ COPY . .
 EXPOSE 3001
 
 # Comando por defecto
-CMD ["node", "--env-file=.env", "server.js"]
+CMD ["node", "server.js"]
