@@ -61,14 +61,14 @@ Una vez se tiene listo este entorno de programas se puede descargar el zip del r
 	JWT_SECRET=<define_un_token_secreto>
 	PORT=4000 #Puerto donde correrá el servidor backend por defecto 4000
 ``` 
-* Crear tablas para la base de datos: en una terminal en el /backend ejecute el comando node --env-file=.env runTablesCreation.js \
-* Cargar los Triggers a la base de datos: en una terminal en el /backend ejecute el comando node --env-file=.env runTriggersCreation.js \
-* Poblar tablas con datos: en una terminal en el /backend ejecute el comando node --env-file=.env runSeed.js
+* Crear tablas para la base de datos: en una terminal en el /backend ejecute el comando `node --env-file=.env runTablesCreation.js`
+* Cargar los Triggers a la base de datos: en una terminal en el /backend ejecute el comando `node --env-file=.env runTriggersCreation.js`
+* Poblar tablas con datos: en una terminal en el /backend ejecute el comando `node --env-file=.env runSeed.js`
 
 ### Inicializacion de la pagina web.
 
-* Iniciar servidor: en una terminal en el /backend ejecute el comando node --env-file=.env server.js \
-* Luego inicialice una terminal en el directorio BrokerTEC, y corra el comando npm install y luego npm start, esto abrira una ventana en su navegador web con el login para la pagina. \
+* Iniciar servidor: en una terminal en el /backend ejecute el comando `node --env-file=.env server.js`
+* Luego inicialice una terminal en el directorio BrokerTEC, y corra el comando npm install y luego npm start, esto abrira una ventana en su navegador web con el login para la pagina.
 * Si desea abrir mas ventanas de la pagina web, puede hacerlo al escribir en el buscador [http://localhost:3000](http://localhost:3000).
 
 
@@ -80,8 +80,8 @@ Una vez se tiene listo este entorno de programas se puede descargar el zip del r
 ### Ejecutar y probar en un dispositivo móvil (desarrollo)
 
 1. Asegúrate de que tu PC y tu móvil estén en la misma red Wi‑Fi.
-2. Crea un archivo `.env.development.local` en la raiz del proyecto y dentro de este va el contenido `REACT_APP_API_URL=<tu_direccion_IP_donde_corre_el_frontend>` esta IP se muestra el ejecutar el `npm start` en la parte de  On Your Network:. \
-3. Cierra y vuelve a correr el servidor en la carpeta `backend`. \ 
+2. Crea un archivo `.env.development.local` en la raiz del proyecto y dentro de este va el contenido `REACT_APP_API_URL=<tu_direccion_IP_donde_corre_el_frontend>` esta IP se muestra el ejecutar el `npm start` en la parte de  On Your Network:.
+3. Cierra y vuelve a correr el servidor en la carpeta `backend`.
 4. En la carpeta del frontend `BrokerTEC` vuelve a iniciar la pagina:
 	```powershell
 	npm start
