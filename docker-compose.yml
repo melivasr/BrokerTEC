@@ -28,7 +28,7 @@ services:
             DB_PORT: 1433
             DB_USER: sa
             DB_PASS: "${DB_PASS}"
-            DB_NAME: BrokerTEC
+            DB_NAME: "${DB_NAME}"
         entrypoint: >
             sh -c "sleep 5 && node runTablesCreation.js && node runSeed.js"
 
@@ -43,19 +43,18 @@ services:
             DB_PORT: 1433
             DB_USER: sa
             DB_PASS: "${DB_PASS}"
-            DB_NAME: BrokerTEC
+            DB_NAME: "${DB_NAME}"
             PORT: 3001
         ports:
             - "3001:3001"
 
     frontend:
         build:
-            context: .
-            dockerfile: src/Dockerfile
+            context: ./frontend
         container_name: frontend
         depends_on:
             - backend
         environment:
-            REACT_APP_API_URL: "${REACT_APP_API_URL}"
+            REACT_APP_API_URL: backend
         ports:
             - "3000:80"
