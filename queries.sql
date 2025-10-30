@@ -1,0 +1,13 @@
+SELECT * FROM Mercado;
+SELECT * FROM Empresa;
+SELECT * FROM Billetera;
+SELECT * FROM Portafolio;
+SELECT id, nombre, alias FROM Usuario;
+SELECT id, habilitado, deshabilitado_justificacion FROM Usuario;
+SELECT id, contrasena_hash FROM Usuario;
+SELECT * FROM Mercado_Habilitado;
+SELECT * FROM Inventario;
+SELECT * FROM Inventario_Historial;
+SELECT * FROM Billetera_Historial;
+SELECT * FROM Portafolio_Historial;
+SELECT * FROM Empresa_Favorita;
