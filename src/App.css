@@ -185,3 +185,22 @@ body.dark-mode table thead th {
   margin: 4px 0;
   font-size: 15px;
 }
+
+/* Theme toggle responsive */
+.theme-text {
+  display: inline;
+}
+
+.theme-emoji {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .theme-text {
+    display: none;
+  }
+  
+  .theme-emoji {
+    display: inline;
+  }
+}

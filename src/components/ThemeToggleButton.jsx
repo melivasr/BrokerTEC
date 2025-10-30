@@ -35,8 +35,10 @@ export default function ThemeToggleButton() {
         transition: "background 0.2s, color 0.2s"
       }}
       aria-label="Cambiar modo oscuro/claro"
+      className="theme-toggle"
     >
-      {dark ? "🌙 Modo Oscuro" : "☀️ Modo Claro"}
+      <span className="theme-text">{dark ? "🌙 Modo Oscuro" : "☀️ Modo Claro"}</span>
+      <span className="theme-emoji">{dark ? "🌙" : "☀️"}</span>
     </button>
   );
 }
