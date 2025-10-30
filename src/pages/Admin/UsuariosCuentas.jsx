@@ -186,6 +186,8 @@ const UsuariosCuentas = () => {
   const [billeteraData, setBilleteraData] = useState({
     id_billetera: '', fondos: 0, limite_diario: 0, categoria: 'Junior'
   });
+  const [formErrors, setFormErrors] = useState({});
+  const [editErrors, setEditErrors] = useState({});
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -204,12 +206,10 @@ const UsuariosCuentas = () => {
     };
 
     const id = setInterval(refetch, 8000);
-    // refrescar cuando la pestaña vuelve a estar visible
     const onVisibility = () => {
       if (document.visibilityState === 'visible') refetch();
     };
     document.addEventListener('visibilitychange', onVisibility);
-    // refrescar cuando la ventana recupera foco
     const onFocus = () => refetch();
     window.addEventListener('focus', onFocus);
     return () => {
@@ -241,14 +241,9 @@ const UsuariosCuentas = () => {
       ]);
 
       setUsuarios(usuariosData || []);
-      setTopWallet((wallet || []).map(r => ({...r,
-        saldo: Number(r?.saldo ?? 0),
-      })));
-      setTopAcciones((acciones || []).map(r => ({...r,
-        valor_acciones: Number(r?.valor_acciones ?? 0),
-      })));
-    } catch (e) {
-    }
+      setTopWallet((wallet || []).map(r => ({...r, saldo: Number(r?.saldo ?? 0)})));
+      setTopAcciones((acciones || []).map(r => ({...r, valor_acciones: Number(r?.valor_acciones ?? 0)})));
+    } catch (e) {}
   };
 
   const handleUsuarioClick = async (usuario) => {
@@ -267,36 +262,73 @@ const UsuariosCuentas = () => {
     } catch { setCuentas(null); setError('Error cargando cuentas'); }
   };
 
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  
   const handleCreateUsuario = async () => {
     setError(''); setSuccess('');
-    if (!formData.alias || !formData.nombre || !formData.direccion || !formData.pais_origen || 
-        !formData.telefono || !formData.correo || !formData.password) {
-      setError('Todos los campos son requeridos');
+    setFormErrors({});
+    
+    const errors = {};
+    
+    if (!formData.alias?.trim()) errors.alias = 'El alias es requerido';
+    if (!formData.nombre?.trim()) errors.nombre = 'El nombre es requerido';
+    if (!formData.direccion?.trim()) errors.direccion = 'La dirección es requerida';
+    if (!formData.pais_origen?.trim()) errors.pais_origen = 'El país es requerido';
+    if (!formData.telefono?.trim()) errors.telefono = 'El teléfono es requerido';
+    if (!formData.correo?.trim()) errors.correo = 'El correo es requerido';
+    else if (!isValidEmail(formData.correo)) errors.correo = 'Formato de correo inválido (ejemplo@dominio.com)';
+    if (!formData.password?.trim()) errors.password = 'La contraseña es requerida';
+    else if (formData.password.length < 6) errors.password = 'La contraseña debe tener al menos 6 caracteres';
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
+    
     try {
       await register(formData);
       setSuccess('Usuario creado correctamente');
       setShowCreateModal(false);
       setFormData({ alias: '', nombre: '', direccion: '', pais_origen: '', telefono: '', correo: '', password: '', rol: 'Trader' });
+      setFormErrors({});
       fetchUsuarios(); fetchTops();
-    } catch (err) { setError(err.response?.data?.message || 'Error al crear usuario'); }
+    } catch (err) { 
+      setError(err.response?.data?.message || 'Error al crear usuario'); 
+    }
   };
 
   const handleEditUsuario = async () => {
     setError(''); setSuccess('');
-    if (!editData.alias || !editData.nombre || !editData.direccion || 
-        !editData.pais_origen || !editData.telefono || !editData.correo) {
-      setError('Todos los campos son requeridos');
+    setEditErrors({});
+    
+    const errors = {};
+    
+    if (!editData.alias?.trim()) errors.alias = 'El alias es requerido';
+    if (!editData.nombre?.trim()) errors.nombre = 'El nombre es requerido';
+    if (!editData.direccion?.trim()) errors.direccion = 'La dirección es requerida';
+    if (!editData.pais_origen?.trim()) errors.pais_origen = 'El país es requerido';
+    if (!editData.telefono?.trim()) errors.telefono = 'El teléfono es requerido';
+    if (!editData.correo?.trim()) errors.correo = 'El correo es requerido';
+    else if (!isValidEmail(editData.correo)) errors.correo = 'Formato de correo inválido (ejemplo@dominio.com)';
+    
+    if (Object.keys(errors).length > 0) {
+      setEditErrors(errors);
       return;
     }
+    
     try {
       await updateUserById(selectedUsuario.id, editData);
       setSuccess('Usuario actualizado correctamente');
       setShowEditModal(false);
+      setEditErrors({});
       fetchUsuarios();
       if (cuentas) handleUsuarioClick(selectedUsuario);
-    } catch (err) { setError(err.response?.data?.message || 'Error al actualizar usuario'); }
+    } catch (err) { 
+      setError(err.response?.data?.message || 'Error al actualizar usuario'); 
+    }
   };
 
   const handleEditBilletera = async () => {
@@ -384,7 +416,7 @@ const UsuariosCuentas = () => {
             onEditarBilletera={() => {
               setBilleteraData({
                 id_billetera: selectedUsuario.id_billetera,
-                fondos: cuentas.wallet.saldo,          // solo lectura en el modal
+                fondos: cuentas.wallet.saldo,
                 limite_diario: cuentas.wallet.limite_diario,
                 categoria: cuentas.wallet.categoria
               });
@@ -395,7 +427,7 @@ const UsuariosCuentas = () => {
 
         <TopTradersCharts topWallet={topWallet} topAcciones={topAcciones} isMobile={isMobile} />
 
-        {/* MODALES */}
+        {/* MODAL CREAR */}
         {showCreateModal && (
           <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', 
             display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, 
@@ -403,41 +435,140 @@ const UsuariosCuentas = () => {
             <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600, 
               maxHeight: isMobile ? 'calc(100vh - 24px)' : '90vh', overflow: 'auto', margin: 'auto' }}>
               <h3>Crear Usuario</h3>
+              
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Alias *</label>
-                <input type="text" value={formData.alias} onChange={(e) => setFormData({ ...formData, alias: e.target.value })} 
-                  placeholder="juanp" style={inputStyle} />
+                <input 
+                  type="text" 
+                  value={formData.alias} 
+                  onChange={(e) => {
+                    setFormData({ ...formData, alias: e.target.value });
+                    if (formErrors.alias) setFormErrors({ ...formErrors, alias: null });
+                  }} 
+                  placeholder="juanp" 
+                  style={{ ...inputStyle, borderColor: formErrors.alias ? '#dc3545' : '#ddd' }} 
+                />
+                {formErrors.alias && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {formErrors.alias}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Nombre Completo *</label>
-                <input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} 
-                  placeholder="Juan Pérez" style={inputStyle} />
+                <input 
+                  type="text" 
+                  value={formData.nombre} 
+                  onChange={(e) => {
+                    setFormData({ ...formData, nombre: e.target.value });
+                    if (formErrors.nombre) setFormErrors({ ...formErrors, nombre: null });
+                  }} 
+                  placeholder="Juan Pérez" 
+                  style={{ ...inputStyle, borderColor: formErrors.nombre ? '#dc3545' : '#ddd' }} 
+                />
+                {formErrors.nombre && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {formErrors.nombre}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Dirección *</label>
-                <input type="text" value={formData.direccion} onChange={(e) => setFormData({ ...formData, direccion: e.target.value })} 
-                  placeholder="Calle Principal 123" style={inputStyle} />
+                <input 
+                  type="text" 
+                  value={formData.direccion} 
+                  onChange={(e) => {
+                    setFormData({ ...formData, direccion: e.target.value });
+                    if (formErrors.direccion) setFormErrors({ ...formErrors, direccion: null });
+                  }} 
+                  placeholder="Calle Principal 123" 
+                  style={{ ...inputStyle, borderColor: formErrors.direccion ? '#dc3545' : '#ddd' }} 
+                />
+                {formErrors.direccion && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {formErrors.direccion}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>País de Origen *</label>
-                <input type="text" value={formData.pais_origen} onChange={(e) => setFormData({ ...formData, pais_origen: e.target.value })} 
-                  placeholder="Costa Rica" style={inputStyle} />
+                <input 
+                  type="text" 
+                  value={formData.pais_origen} 
+                  onChange={(e) => {
+                    setFormData({ ...formData, pais_origen: e.target.value });
+                    if (formErrors.pais_origen) setFormErrors({ ...formErrors, pais_origen: null });
+                  }} 
+                  placeholder="Costa Rica" 
+                  style={{ ...inputStyle, borderColor: formErrors.pais_origen ? '#dc3545' : '#ddd' }} 
+                />
+                {formErrors.pais_origen && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {formErrors.pais_origen}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Teléfono *</label>
-                <input type="tel" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} 
-                  placeholder="+506 1234-5678" style={inputStyle} />
+                <input 
+                  type="tel" 
+                  value={formData.telefono} 
+                  onChange={(e) => {
+                    setFormData({ ...formData, telefono: e.target.value });
+                    if (formErrors.telefono) setFormErrors({ ...formErrors, telefono: null });
+                  }} 
+                  placeholder="+506 1234-5678" 
+                  style={{ ...inputStyle, borderColor: formErrors.telefono ? '#dc3545' : '#ddd' }} 
+                />
+                {formErrors.telefono && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {formErrors.telefono}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Correo Electrónico *</label>
-                <input type="email" value={formData.correo} onChange={(e) => setFormData({ ...formData, correo: e.target.value })} 
-                  placeholder="juan@example.com" style={inputStyle} />
+                <input 
+                  type="email" 
+                  value={formData.correo} 
+                  onChange={(e) => {
+                    setFormData({ ...formData, correo: e.target.value });
+                    if (formErrors.correo) setFormErrors({ ...formErrors, correo: null });
+                  }} 
+                  placeholder="name@example.com" 
+                  style={{ ...inputStyle, borderColor: formErrors.correo ? '#dc3545' : '#ddd' }} 
+                />
+                {formErrors.correo && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {formErrors.correo}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Contraseña *</label>
-                <input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
-                  placeholder="Mínimo 6 caracteres" style={inputStyle} />
+                <input 
+                  type="password" 
+                  value={formData.password} 
+                  onChange={(e) => {
+                    setFormData({ ...formData, password: e.target.value });
+                    if (formErrors.password) setFormErrors({ ...formErrors, password: null });
+                  }} 
+                  placeholder="Mínimo 6 caracteres" 
+                  style={{ ...inputStyle, borderColor: formErrors.password ? '#dc3545' : '#ddd' }} 
+                />
+                {formErrors.password && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {formErrors.password}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Rol *</label>
                 <select value={formData.rol} onChange={(e) => setFormData({ ...formData, rol: e.target.value })} style={inputStyle}>
@@ -449,10 +580,14 @@ const UsuariosCuentas = () => {
                   La categoría de billetera se asigna al editar las billeteras en cuentas
                 </small>
               </div>
+
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row', marginTop: 24 }}>
-                <button onClick={() => { setShowCreateModal(false); 
-                  setFormData({ alias: '', nombre: '', direccion: '', pais_origen: '', telefono: '', correo: '', password: '', rol: 'Trader' }); }} 
-                  className="btn-block" style={{ padding: '8px 16px' }}>Cancelar</button>
+                <button onClick={() => { 
+                  setShowCreateModal(false); 
+                  setFormData({ alias: '', nombre: '', direccion: '', pais_origen: '', telefono: '', correo: '', password: '', rol: 'Trader' }); 
+                  setFormErrors({});
+                }} 
+                className="btn-block" style={{ padding: '8px 16px' }}>Cancelar</button>
                 <button onClick={handleCreateUsuario} style={{ background: '#28a745', color: 'white', padding: '8px 16px' }} 
                   className="btn-block">Crear Usuario</button>
               </div>
@@ -460,6 +595,7 @@ const UsuariosCuentas = () => {
           </div>
         )}
 
+        {/* MODAL EDITAR */}
         {showEditModal && (
           <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', 
             display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, 
@@ -467,30 +603,115 @@ const UsuariosCuentas = () => {
             <div className="card" style={{ minWidth: isMobile ? '100%' : 500, maxWidth: isMobile ? '100%' : 600, 
               maxHeight: isMobile ? 'calc(100vh - 24px)' : '90vh', overflow: 'auto', margin: 'auto' }}>
               <h3>Editar Usuario: {selectedUsuario?.alias}</h3>
+              
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Alias *</label>
-                <input type="text" value={editData.alias} onChange={(e) => setEditData({ ...editData, alias: e.target.value })} style={inputStyle} />
+                <input 
+                  type="text" 
+                  value={editData.alias} 
+                  onChange={(e) => {
+                    setEditData({ ...editData, alias: e.target.value });
+                    if (editErrors.alias) setEditErrors({ ...editErrors, alias: null });
+                  }} 
+                  style={{ ...inputStyle, borderColor: editErrors.alias ? '#dc3545' : '#ddd' }} 
+                />
+                {editErrors.alias && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {editErrors.alias}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Nombre Completo *</label>
-                <input type="text" value={editData.nombre} onChange={(e) => setEditData({ ...editData, nombre: e.target.value })} style={inputStyle} />
+                <input 
+                  type="text" 
+                  value={editData.nombre} 
+                  onChange={(e) => {
+                    setEditData({ ...editData, nombre: e.target.value });
+                    if (editErrors.nombre) setEditErrors({ ...editErrors, nombre: null });
+                  }} 
+                  style={{ ...inputStyle, borderColor: editErrors.nombre ? '#dc3545' : '#ddd' }} 
+                />
+                {editErrors.nombre && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {editErrors.nombre}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Dirección *</label>
-                <input type="text" value={editData.direccion} onChange={(e) => setEditData({ ...editData, direccion: e.target.value })} style={inputStyle} />
+                <input 
+                  type="text" 
+                  value={editData.direccion} 
+                  onChange={(e) => {
+                    setEditData({ ...editData, direccion: e.target.value });
+                    if (editErrors.direccion) setEditErrors({ ...editErrors, direccion: null });
+                  }} 
+                  style={{ ...inputStyle, borderColor: editErrors.direccion ? '#dc3545' : '#ddd' }} 
+                />
+                {editErrors.direccion && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {editErrors.direccion}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>País de Origen *</label>
-                <input type="text" value={editData.pais_origen} onChange={(e) => setEditData({ ...editData, pais_origen: e.target.value })} style={inputStyle} />
+                <input 
+                  type="text" 
+                  value={editData.pais_origen} 
+                  onChange={(e) => {
+                    setEditData({ ...editData, pais_origen: e.target.value });
+                    if (editErrors.pais_origen) setEditErrors({ ...editErrors, pais_origen: null });
+                  }} 
+                  style={{ ...inputStyle, borderColor: editErrors.pais_origen ? '#dc3545' : '#ddd' }} 
+                />
+                {editErrors.pais_origen && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {editErrors.pais_origen}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Teléfono *</label>
-                <input type="tel" value={editData.telefono} onChange={(e) => setEditData({ ...editData, telefono: e.target.value })} style={inputStyle} />
+                <input 
+                  type="tel" 
+                  value={editData.telefono} 
+                  onChange={(e) => {
+                    setEditData({ ...editData, telefono: e.target.value });
+                    if (editErrors.telefono) setEditErrors({ ...editErrors, telefono: null });
+                  }} 
+                  style={{ ...inputStyle, borderColor: editErrors.telefono ? '#dc3545' : '#ddd' }} 
+                />
+                {editErrors.telefono && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {editErrors.telefono}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Correo Electrónico *</label>
-                <input type="email" value={editData.correo} onChange={(e) => setEditData({ ...editData, correo: e.target.value })} style={inputStyle} />
+                <input 
+                  type="email" 
+                  value={editData.correo} 
+                  onChange={(e) => {
+                    setEditData({ ...editData, correo: e.target.value });
+                    if (editErrors.correo) setEditErrors({ ...editErrors, correo: null });
+                  }} 
+                  style={{ ...inputStyle, borderColor: editErrors.correo ? '#dc3545' : '#ddd' }} 
+                />
+                {editErrors.correo && (
+                  <small style={{ color: '#dc3545', fontSize: '0.85em', display: 'block', marginTop: 4 }}>
+                    {editErrors.correo}
+                  </small>
+                )}
               </div>
+
               <div style={{ marginBottom: 16 }}>
                 <label style={{ display: 'block', marginBottom: 4, fontWeight: 'bold' }}>Rol *</label>
                 <select value={editData.rol} onChange={(e) => setEditData({ ...editData, rol: e.target.value })} style={inputStyle}>
@@ -499,8 +720,9 @@ const UsuariosCuentas = () => {
                   <option value="Admin">Admin</option>
                 </select>
               </div>
+
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexDirection: isMobile ? 'column' : 'row', marginTop: 24 }}>
-                <button onClick={() => setShowEditModal(false)} className="btn-block" style={{ padding: '8px 16px' }}>Cancelar</button>
+                <button onClick={() => { setShowEditModal(false); setEditErrors({}); }} className="btn-block" style={{ padding: '8px 16px' }}>Cancelar</button>
                 <button onClick={handleEditUsuario} style={{ background: '#007bff', color: 'white', padding: '8px 16px' }} 
                   className="btn-block">Guardar Cambios</button>
               </div>
@@ -508,6 +730,7 @@ const UsuariosCuentas = () => {
           </div>
         )}
 
+        {/* MODAL EDITAR BILLETERA */}
         {showEditBilleteraModal && (
           <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', 
             display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
@@ -551,6 +774,7 @@ const UsuariosCuentas = () => {
           </div>
         )}
 
+        {/* MODAL GESTIONAR MERCADOS */}
         {showMercadosModal && selectedUsuario && cuentas && (
           <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', 
             display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>
@@ -586,6 +810,7 @@ const UsuariosCuentas = () => {
           </div>
         )}
 
+        {/* MODAL DESHABILITAR */}
         {showModal && (
           <div className="modal" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', 
             display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? 12 : 24 }}>

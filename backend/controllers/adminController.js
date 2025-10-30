@@ -3,6 +3,7 @@ import { queryDB } from "../config/db.js";
 const GUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 const isGuid = (v) => GUID.test(String(v || ''));
 
+
 // Actualizar billetera de un usuario
 export async function updateBilletera(req, res) {
   const { id_billetera } = req.params;
@@ -102,12 +103,40 @@ export async function updateMercado(req, res) {
 export async function deleteMercado(req, res) {
   const { id } = req.params;
   if (!isGuid(id)) return res.status(400).json({ message: 'ID inválido' });
+  
   try {
-    // Con ON DELETE CASCADE en FK Empresa(id_mercado) y Mercado_Habilitado(id_mercado)
-    await queryDB(`DELETE FROM Mercado WHERE id=@id`, { id });
-    res.json({ message: 'Mercado eliminado' });
+    // Verificar si hay empresas ACTIVAS 
+    const empresasActivas = await queryDB(
+      `SELECT COUNT(*) as total FROM Empresa WHERE id_mercado = @id AND (delistada = 0 OR delistada IS NULL)`,
+      { id }
+    );
+    if (empresasActivas[0].total > 0) {
+      return res.status(400).json({ 
+        message: `No se puede eliminar: hay ${empresasActivas[0].total} empresa(s) activa(s). Debe delistarlas primero.` 
+      });
+    }
+    // Eliminar empresas delistadas del mercado primero
+    const empresasDelistadas = await queryDB(
+      `SELECT COUNT(*) as total FROM Empresa WHERE id_mercado = @id AND delistada = 1`,
+      { id }
+    );
+    if (empresasDelistadas[0].total > 0) {
+      // Eliminar empresas delistadas
+      await queryDB(
+        `DELETE FROM Empresa WHERE id_mercado = @id AND delistada = 1`,
+        { id }
+      );
+    }
+    // Ahora eliminar el mercado 
+    await queryDB(`DELETE FROM Mercado WHERE id = @id`, { id });
+    res.json({ 
+      message: empresasDelistadas[0].total > 0 
+        ? `Mercado eliminado (se eliminaron ${empresasDelistadas[0].total} empresa(s) delistada(s))`
+        : 'Mercado eliminado' 
+    });
   } catch (e) {
-    res.status(500).json({ message: 'Debe deslistar las empresas antes de eliminar el mercado' });
+    console.error('Error al eliminar mercado:', e);
+    res.status(500).json({ message: 'Error al eliminar mercado' });
   }
 }
 
@@ -130,6 +159,7 @@ export async function getEmpresasAdmin(_req, res) {
         WHERE ih.id_empresa = e.id
         ORDER BY ih.fecha DESC
       ) ult
+      WHERE e.delistada = 0 
       ORDER BY m.nombre, e.nombre
     `);
     res.json(rows);
@@ -239,7 +269,7 @@ export async function delistarEmpresa(req, res) {
       : Number(emp[0].precio) || 0;
 
     if (precio <= 0) {
-      return res.status(400).json({ message: 'No hay precio válido para liquidar (fije precio_liquidacion o cargue precio actual)' });
+      return res.status(400).json({ message: 'No hay precio válido para liquidar (cargue un precio antes de liquidar)' });
     }
 
     // Posiciones NETAS por alias 
