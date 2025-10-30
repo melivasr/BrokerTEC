@@ -48,7 +48,7 @@ export async function updateBilletera(req, res) {
 
     res.json({ message: "Billetera actualizada" });
   } catch (e) {
-    console.error(e);
+    console.error('[updateBilletera] Error updating wallet:', e.message);
     res.status(500).json({ message: "Error al actualizar billetera" });
   }
 }
@@ -68,7 +68,7 @@ export async function getBilletera(req, res) {
     if (!rows.length) return res.status(404).json({ message: "Billetera no encontrada" });
     res.json(rows[0]);
   } catch (e) {
-    console.error(e);
+    console.error('[getBilletera] Error fetching wallet:', e.message);
     res.status(500).json({ message: "Error al obtener billetera" });
   }
 }
@@ -306,7 +306,7 @@ export async function delistarEmpresa(req, res) {
         { id_empresa: id }
       );
       
-      console.log('Estructura Portafolio:', portafolioCheck);
+      console.log('[updateInventario] Portfolio check completed');
       
       // Intentar actualización específica
       await queryDB(
@@ -337,7 +337,7 @@ export async function delistarEmpresa(req, res) {
       justificacion
     });
   } catch (e) {
-    console.error(e);
+    console.error('[delistarEmpresa] Error delisting company:', e.message);
     res.status(500).json({ message: 'Error al delistar empresa' });
   }
 }
@@ -491,7 +491,7 @@ export async function getUsuarioCuentas(req, res) {
 
     res.json({ wallet, mercados });
   } catch (e) {
-    console.error(e);
+    console.error('[getUsuarioCuentas] Error fetching user accounts:', e.message);
     res.status(500).json({ message: 'Error al obtener cuentas' });
   }
 }
@@ -525,7 +525,7 @@ export async function habilitarMercado(req, res) {
 
         res.json({ message: 'Mercado habilitado exitosamente' });
     } catch (error) {
-        console.error('Error:', error);
+        console.error('[habilitarMercado] Error enabling market:', error.message);
         res.status(500).json({ message: 'Error al habilitar mercado' });
     }
 }
@@ -546,7 +546,7 @@ export async function deshabilitarMercado(req, res) {
 
         res.json({ message: 'Mercado deshabilitado exitosamente' });
     } catch (error) {
-        console.error('Error:', error);
+        console.error('[deshabilitarMercado] Error disabling market:', error.message);
         res.status(500).json({ message: 'Error al deshabilitar mercado' });
     }
 }
@@ -656,7 +656,7 @@ export async function deshabilitarUsuario(req, res) {
             justificacion: justificacion
         });
     } catch (error) {
-        console.error('Error:', error);
+        console.error('[deshabilitarUsuario] Error disabling user:', error.message);
         res.status(500).json({ message: 'Error al deshabilitar usuario' });
     }
 }

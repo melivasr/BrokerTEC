@@ -36,7 +36,7 @@ export default function EmpresaDetalle() {
         setHistorico(Array.isArray(data.historico) ? data.historico.reverse() : []); // invertir para mostrar ascendente por fecha en el gráfico
         setFavorita(data.favorita || false);
         } catch (err) {
-        console.error('Error fetching empresa detalle', err);
+        console.error('[EmpresaDetalle] Error fetching company details:', err?.message);
         const msg = err?.response?.data?.message || err?.message || 'Error al cargar empresa';
         setError(msg);
       }
@@ -60,8 +60,9 @@ export default function EmpresaDetalle() {
         setFavorita(prev => !prev);
       }
     } catch (err) {
-      console.error('Error marcando favorita', err);
-      setError('No se pudo marcar como favorita');
+      console.error('[EmpresaDetalle] Error marking favorite:', err?.message);
+      const msg = err?.response?.data?.message || err?.message || 'No se pudo marcar como favorita';
+      setError(msg);
     }
   };
 

@@ -3,12 +3,11 @@ const router = express.Router();
 import {updateBilletera, getBilletera, createMercado, updateMercado, deleteMercado, getEmpresasAdmin, createEmpresaAdmin,
     updateEmpresa, updateInventario, delistarEmpresa, getHistorialPrecio, cargarPrecioManual, cargarPreciosBatch,     getUsuarios,
     getUsuarioCuentas, getTopWallet, getTopAcciones, habilitarMercado, deshabilitarMercado, deshabilitarUsuario} from '../controllers/adminController.js';
-import { verifyToken } from '../middlewares/authMiddleware.js';
+import { verifyToken, verifyRole } from '../middlewares/authMiddleware.js';
 
-router.put('/billetera/:id_billetera', updateBilletera);
-router.get('/billetera/:id_billetera', getBilletera);
-
+// Proteger todas las rutas de admin requiriendo token válido y rol 'Admin'
 router.use(verifyToken);
+router.use(verifyRole('Admin'));
 router.post('/mercados', createMercado);
 router.put('/mercados/:id', updateMercado);
 router.delete('/mercados/:id', deleteMercado);

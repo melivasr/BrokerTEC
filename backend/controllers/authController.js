@@ -35,7 +35,7 @@ export async function register(req, res) {
 
     res.json({ message: "Usuario registrado correctamente" });
   } catch (e) {
-    console.error(e);
+    console.error('[register] Error registering user:', e.message);
     res.status(500).json({ message: "Error en el registro", error: e.message });
   }
 }
@@ -65,8 +65,8 @@ export async function login(req, res) {
   const { contrasena_hash, ...userData } = user;
   res.json({ token, user: userData });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error en el login", error });
+    console.error('[login] Error during authentication:', error.message);
+    res.status(500).json({ message: "Error en el login", error: error.message });
   }
 }
 

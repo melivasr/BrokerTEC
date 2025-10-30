@@ -10,7 +10,7 @@ export async function isUserEnabled(userId) {
     // SQL BIT puede venir como 0/1 o booleano
     return v === 1 || v === true || v === '1';
   } catch (e) {
-    console.error('isUserEnabled error:', e);
+    console.error('[isUserEnabled] Error checking user status:', e.message);
     return false;
   }
 }

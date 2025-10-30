@@ -193,7 +193,7 @@ export default function ReportesUsuario() {
       setResultado(data);
       
     } catch (err) {
-      console.error('Error:', err);
+      console.error('[ReportesUsuario] Error loading user history:', err?.message);
       const mensaje = err?.response?.data?.message || err?.message || 'Error al buscar usuario';
       
       if (mensaje === 'alias inexistente' || err?.response?.status === 404) {

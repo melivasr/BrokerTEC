@@ -32,7 +32,7 @@ export default function Portafolio() {
         const w = await getWallet();
         setWallet(w);
       } catch (err) {
-        console.error("Error loading portafolio:", err);
+        console.error("[Portafolio] Error loading portfolio:", err?.message);
         const msg =
           err?.response?.data?.message ||
           err?.message ||
@@ -65,7 +65,7 @@ export default function Portafolio() {
       const w = await getWallet();
       setWallet(w);
     } catch (err) {
-      console.error("Error en handleVender:", err);
+      console.error("[Portafolio] Error selling shares:", err?.message);
       const msg =
         err?.response?.data?.message || err?.message || "Error en la venta";
       setError(msg);
@@ -194,7 +194,7 @@ export default function Portafolio() {
           </div>
         )}
 
-        {/* ✅ Vista móvil (cards verticales) */}
+        {/* Vista móvil (cards verticales) */}
         {isMobile && (
           <div className="mobile-cards">
             {posiciones.length === 0 ? (

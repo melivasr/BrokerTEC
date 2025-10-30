@@ -34,9 +34,7 @@ export default function HomeTrader() {
       setLoading(true);
       setError("");
       try {
-        console.log("Solicitando datos de HomeTrader para user.id:", user.id);
         const data = await getHomeTraderData(user.id);
-        console.log("Respuesta HomeTrader:", data);
         if (Array.isArray(data)) {
           setMercados(data);
           if (data.length === 0) setError("No hay mercados habilitados.");
@@ -51,10 +49,10 @@ export default function HomeTrader() {
           const fav = await getFavoritas();
           setFavoritas(fav || []);
         } catch (e) {
-          console.warn('No se pudieron cargar favoritas', e);
+          console.warn('[HomeTrader] Unable to load favorites:', e?.message);
         }
       } catch (err) {
-        console.error("Error al cargar datos de mercado:", err);
+        console.error('[HomeTrader] Error loading market data:', err?.message);
         setError(err?.response?.data?.message || err?.message || "Error al cargar datos de mercado");
       }
       setLoading(false);

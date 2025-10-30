@@ -204,7 +204,9 @@ const Catalogos = () => {
         }
       }
       setPreciosHistoricos(historicos);
-    } catch { setError('Error cargando datos'); }
+    } catch (err) { 
+      setError(err.response?.data?.message || err.message || 'Error al cargar datos'); 
+    }
   };
 
   const handleSaveMercado = async () => {
@@ -217,7 +219,9 @@ const Catalogos = () => {
       setSuccess(`Mercado ${editingMercado ? 'actualizado' : 'creado'} exitosamente`);
       setShowMercadoModal(false);
       fetchData();
-    } catch (err) { setError(err.message || 'Error al guardar mercado'); }
+    } catch (err) { 
+      setError(err.response?.data?.message || err.message || 'Error al guardar mercado'); 
+    }
   };
 
   const handleDeleteMercado = async (mercado) => {
@@ -260,7 +264,9 @@ const Catalogos = () => {
       setSuccess(`Empresa ${editingEmpresa ? 'actualizada' : 'creada'}`);
       setShowEmpresaModal(false);
       fetchData();
-    } catch (err) { setError(err.message || 'Error'); }
+    } catch (err) { 
+      setError(err.response?.data?.message || err.message || 'Error al guardar empresa'); 
+    }
   };
 
   const handleDelistEmpresa = async () => {
@@ -272,7 +278,9 @@ const Catalogos = () => {
       setShowDelistModal(false);
       setJustificacion(''); setPrecioLiquidacion('');
       fetchData();
-    } catch (err) { setError(err.message || 'Error'); }
+    } catch (err) { 
+      setError(err.response?.data?.message || err.message || 'Error al deslistar empresa'); 
+    }
   };
 
   const inputStyle = modalInput(isMobile);

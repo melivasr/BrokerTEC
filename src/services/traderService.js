@@ -90,12 +90,3 @@ export async function registrarAccesoSeguridad() {
   const res = await axios.post('/api/trader/seguridad/registrar-acceso', {}, { headers: authHeader() });
   return res.data;
 }
-
-// Reportes para trader
-export async function getTopWallet() {
-  return (await axios.get('/api/trader/reportes/top-wallet', { headers: authHeader() })).data;
-}
-
-export async function getTopAcciones() {
-  return (await axios.get('/api/trader/reportes/top-acciones', { headers: authHeader() })).data;
-}

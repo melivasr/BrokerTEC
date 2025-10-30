@@ -23,7 +23,7 @@ export async function getHomeTraderData(req, res) {
     if (mercados.length === 0) {
       return res.status(200).json({ error: "mercado no habilitado", mercados: [] });
     }
-    // 2. Para cada mercado, obtener top 5 empresas por capitalización
+    // 2. Para cada mercado, obtener de mayor a menor empresas por capitalización
     const result = [];
     for (const mercado of mercados) {
       const empresas = await queryDB(
@@ -52,7 +52,7 @@ export async function getHomeTraderData(req, res) {
     }
     res.json(result);
   } catch (error) {
-    console.error("Error en getHomeTraderData:", error);
+    console.error("[getHomeTraderData] Error fetching home trader data:", error.message);
     res.status(500).json({ error: "Error obteniendo datos de HomeTrader", details: error });
     }
 }
@@ -87,7 +87,6 @@ export async function createEmpresa(req, res) {
 // Obtener detalle completo de una empresa para la vista de detalle del Trader
 export async function getEmpresaDetalle(req, res) {
     const { id } = req.params;
-    console.log('getEmpresaDetalle llamado con id=', id);
 
     // Validar que recibimos un GUID válido
     const guidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
@@ -185,7 +184,7 @@ export async function getEmpresaDetalle(req, res) {
                 }
             }
         } catch (err) {
-            console.warn("No se pudo obtener posición del usuario:", err.message);
+            console.warn("[getEmpresaDetalle] Unable to fetch user position:", err.message);
         }
         
         // 6) Determinar si la empresa es favorita para el usuario autenticado
@@ -207,7 +206,7 @@ export async function getEmpresaDetalle(req, res) {
                 }
             }
         } catch (e) {
-            console.warn('No se pudo verificar favoritas:', e?.message || e);
+            console.warn('[getEmpresaDetalle] Unable to verify favorites:', e?.message || 'Unknown error');
         }
 
         // 7) Construir respuesta final
@@ -226,7 +225,7 @@ export async function getEmpresaDetalle(req, res) {
         res.json({ empresa, historico: historicoPrevio, favorita: favoritaFlag });
 
     } catch (err) {
-        console.error('Error en getEmpresaDetalle:', err);
+        console.error('[getEmpresaDetalle] Error fetching company details:', err.message);
         res.status(500).json({ message: 'Error al obtener detalle de empresa', error: err.message });
     }
 }
@@ -254,7 +253,7 @@ export async function marcarFavorita(req, res) {
         await queryDB('INSERT INTO Empresa_Favorita (id_empresa, id_usuario) VALUES (@id, @userId)', { id, userId: user.id });
         return res.json({ message: 'Marcada', favorita: true });
     } catch (err) {
-        console.error('Error en marcarFavorita:', err);
+        console.error('[marcarFavorita] Error marking favorite:', err.message);
         return res.status(500).json({ message: 'Error marcando favorita', error: err.message });
     }
 }
@@ -275,7 +274,7 @@ export async function getFavoritas(req, res) {
         );
         return res.json(rows || []);
     } catch (err) {
-        console.error('Error en getFavoritas:', err);
+        console.error('[getFavoritas] Error fetching favorites:', err.message);
         return res.status(500).json({ message: 'Error obteniendo favoritas', error: err.message });
     }
 }
@@ -297,7 +296,7 @@ export async function comprarAcciones(req, res) {
         const enabled = await isUserEnabled(user.id);
         if (!enabled) return res.status(403).json({ message: 'Usuario deshabilitado' });
     } catch (e) {
-        console.error('Error verificando habilitado en comprarAcciones:', e);
+        console.error('[comprarAcciones] Error checking user status:', e.message);
         return res.status(500).json({ message: 'Error interno' });
     }
 
@@ -372,7 +371,7 @@ export async function comprarAcciones(req, res) {
         res.json({ message: 'Compra realizada' });
     } catch (err) {
         try { await transaction.rollback(); } catch (e) {}
-        console.error('Error en comprarAcciones:', err);
+        console.error('[comprarAcciones] Error purchasing shares:', err.message);
         res.status(500).json({ message: 'Error en la compra', error: err.message });
     } finally {
         try { pool && pool.close(); } catch (e) {}
@@ -395,7 +394,7 @@ export async function venderAcciones(req, res) {
         const enabled = await isUserEnabled(user.id);
         if (!enabled) return res.status(403).json({ message: 'Usuario deshabilitado' });
     } catch (e) {
-        console.error('Error verificando habilitado en venderAcciones:', e);
+        console.error('[venderAcciones] Error checking user status:', e.message);
         return res.status(500).json({ message: 'Error interno' });
     }
 
@@ -450,7 +449,7 @@ export async function venderAcciones(req, res) {
         res.json({ message: 'Venta realizada' });
     } catch (err) {
         try { await transaction.rollback(); } catch (e) {}
-        console.error('Error en venderAcciones:', err);
+        console.error('[venderAcciones] Error selling shares:', err.message);
         res.status(500).json({ message: 'Error en la venta', error: err.message });
     } finally {
         try { pool && pool.close(); } catch (e) {}
@@ -509,7 +508,7 @@ export async function getPortafolio(req, res) {
 
     res.json({ posiciones });
   } catch (err) {
-    console.error('Error en getPortafolio:', err);
+    console.error('[getPortafolio] Error fetching portfolio:', err.message);
     res.status(500).json({ message: 'Error al obtener portafolio', error: err.message });
   }
 }
@@ -545,7 +544,7 @@ export async function getLastAccessSeguridad(req, res) {
     return res.json({ lastAccess: isoString });
       
   } catch (err) {
-    console.error("getLastAccessSeguridad error:", err);
+    console.error("[getLastAccessSeguridad] Error fetching last access:", err.message);
     return res.status(500).json({ message: "Error al obtener último acceso", error: err.message });
   }
 }
@@ -566,7 +565,7 @@ export async function registrarAccesoSeguridad(req, res) {
 
     return res.json({ success: true });
   } catch (err) {
-    console.error("registrarAccesoSeguridad error:", err);
+    console.error("[registrarAccesoSeguridad] Error registering access:", err.message);
     return res.status(500).json({ message: "Error al registrar acceso", error: err.message });
   }
 }
@@ -588,7 +587,7 @@ export async function liquidarTodo(req, res) {
     const enabled = await isUserEnabled(userId);
     if (!enabled) return res.status(403).json({ message: 'Usuario deshabilitado' });
   } catch (e) {
-    console.error('Error verificando habilitado en liquidarTodo:', e);
+    console.error('[liquidarTodo] Error checking user status:', e.message);
     return res.status(500).json({ message: 'Error interno' });
   }
 
@@ -599,7 +598,7 @@ export async function liquidarTodo(req, res) {
     const valid = await bcrypt.compare(password, u[0].contrasena_hash);
     if (!valid) return res.status(400).json({ message: "contraseña incorrecta" });
 
-    // usar transaction con mssql (patrón usado en empresaController)
+    // usar transaction con mssql 
     const pool = await sql.connect(dbConfig);
     const transaction = new sql.Transaction(pool);
     try {
@@ -708,28 +707,27 @@ export async function liquidarTodo(req, res) {
       return res.json({ message: "Liquidación completada", soldCount: stats?.soldCount ?? 0, totalValue: stats?.totalValue ?? 0 });
     } catch (errTransaction) {
       try { await transaction.rollback(); } catch (e) {}
-      console.error("liquidarTodo transaction error:", errTransaction);
+      console.error("[liquidarTodo] Transaction error:", errTransaction.message);
       return res.status(500).json({ message: "Error en liquidación", error: errTransaction.message ?? errTransaction });
     } finally {
       try { pool && pool.close(); } catch (e) {}
     }
   } catch (err) {
-    console.error("liquidarTodo error:", err);
+    console.error("[liquidarTodo] Error liquidating:", err.message);
     return res.status(500).json({ message: "Error en liquidar todo", error: err.message });
   }
 }
 
 export async function getWallet(req, res) {
-  const userId = req.user.id;
+  const billeteraId = req.userBilletera; // Validada por middleware
 
   try {
-    // Obtener la billetera asociada al usuario según el schema actual (Billetera)
+    // Obtener la billetera usando el ID validado
     const billetera = await queryDB(
       `SELECT b.id AS id, b.fondos AS saldo, b.categoria AS categoria, b.limite_diario AS limite_diario, b.consumo AS consumo, b.bloqueo_hasta AS bloqueo_hasta
        FROM Billetera b
-       JOIN Usuario u ON u.id_billetera = b.id
-       WHERE u.id = @userId`,
-      { userId }
+       WHERE b.id = @billeteraId`,
+      { billeteraId }
     );
 
     if (!billetera || billetera.length === 0) return res.status(404).json({ message: "Billetera no encontrada" });
@@ -742,16 +740,16 @@ export async function getWallet(req, res) {
       const ahora = new Date();
       if (bloqueoDate <= ahora) {
         // Resetear consumo y limpiar bloqueo
-        await queryDB(`UPDATE Billetera SET consumo = 0, bloqueo_hasta = NULL WHERE id = @billeteraId`, { billeteraId: b.id });
+        await queryDB(`UPDATE Billetera SET consumo = 0, bloqueo_hasta = NULL WHERE id = @billeteraId`, { billeteraId });
         // Registrar snapshot en historial
         await queryDB(`INSERT INTO Billetera_Historial (id_billetera, categoria, fondos, limite_diario, consumo, bloqueo_hasta)
-          SELECT id, categoria, fondos, limite_diario, consumo, bloqueo_hasta FROM Billetera WHERE id = @billeteraId`, { billeteraId: b.id });
+          SELECT id, categoria, fondos, limite_diario, consumo, bloqueo_hasta FROM Billetera WHERE id = @billeteraId`, { billeteraId });
         // Volver a obtener la fila actualizada
         const refreshed = await queryDB(
           `SELECT b.id AS id, b.fondos AS saldo, b.categoria AS categoria, b.limite_diario AS limite_diario, b.consumo AS consumo, b.bloqueo_hasta AS bloqueo_hasta
            FROM Billetera b
            WHERE b.id = @billeteraId`,
-          { billeteraId: b.id }
+          { billeteraId }
         );
         if (refreshed && refreshed.length) b = refreshed[0];
       }
@@ -764,7 +762,7 @@ export async function getWallet(req, res) {
       WHERE id_billetera = @billeteraId AND recarga_monto IS NOT NULL AND recarga_monto > 0
       ORDER BY fecha DESC
     `;
-    const recargasRaw = await queryDB(recargasQuery, { billeteraId: b.id });
+    const recargasRaw = await queryDB(recargasQuery, { billeteraId });
     const recargas = (recargasRaw || [])
       .map(r => ({ fecha: r.fecha, fecha_iso: r.fecha_iso, monto: r.recarga_monto }))
       .map(r => ({ recarga_id: r.fecha_iso, monto: Number(r.monto), fecha_hora: new Date(r.fecha).toISOString() }));
@@ -780,7 +778,7 @@ export async function getWallet(req, res) {
       recargas,
     });
   } catch (error) {
-    console.error('Error en getWallet:', error);
+    console.error('[getWallet] Error fetching wallet:', error.message);
     res.status(500).json({ message: "Error al obtener wallet", error: error.message });
   }
 }
@@ -795,7 +793,7 @@ export async function recargarWallet(req, res) {
     const enabled = await isUserEnabled(userId);
     if (!enabled) return res.status(403).json({ message: 'Usuario deshabilitado' });
   } catch (e) {
-    console.error('Error verificando estado usuario:', e);
+    console.error('[recargarWallet] Error checking user status:', e.message);
     return res.status(500).json({ message: 'Error interno' });
   }
 
@@ -806,19 +804,14 @@ export async function recargarWallet(req, res) {
       return res.status(400).json({ message: 'monto inválido' });
     }
 
+    // Usar billeteraId validada por middleware (verifyBilleterable)
+    const billeteraId = req.userBilletera;
+
     // Usar transacción para evitar condiciones de carrera
     const pool = await sql.connect(dbConfig);
     const transaction = new sql.Transaction(pool);
     try {
       await transaction.begin();
-
-      // Obtener id de la billetera del usuario
-      const bRes = await new sql.Request(transaction).input('userId', userId).query(`SELECT id_billetera FROM Usuario WHERE id = @userId`);
-      if (!bRes.recordset || bRes.recordset.length === 0) {
-        await transaction.rollback();
-        return res.status(404).json({ message: 'Billetera no encontrada' });
-      }
-      const billeteraId = bRes.recordset[0].id_billetera;
 
       // Obtener datos actuales de la billetera
       const bb = await new sql.Request(transaction).input('billeteraId', billeteraId).query(`SELECT id, categoria, fondos, limite_diario, consumo, bloqueo_hasta FROM Billetera WHERE id = @billeteraId`);
@@ -879,13 +872,13 @@ export async function recargarWallet(req, res) {
       return res.json({ message: 'Recarga exitosa', saldo: Number(updated[0].saldo), consumo_diario: Number(updated[0].consumo), bloqueo_hasta: updated[0].bloqueo_hasta ? new Date(updated[0].bloqueo_hasta).toISOString() : null, recargas });
     } catch (err) {
       try { await transaction.rollback(); } catch (e) {}
-      console.error('Error en recargarWallet (tx):', err);
+      console.error('[recargarWallet] Transaction error:', err.message);
       return res.status(500).json({ message: 'Error al recargar', error: err.message });
     } finally {
       try { pool && pool.close(); } catch (e) {}
     }
   } catch (error) {
-    console.error('Error en recargarWallet:', error);
+    console.error('[recargarWallet] Error recharging wallet:', error.message);
     res.status(500).json({ message: 'Error al recargar', error: error.message });
   }
 }

@@ -221,7 +221,7 @@ const Precios = () => {
       setPrecio(''); setFecha('');
       fetchEmpresas();
       if (selectedEmpresa) handleEmpresaClick(selectedEmpresa);
-    } catch (err) { setError(err.response?.data?.message || 'Error'); }
+    } catch (err) { setError(err.response?.data?.message || err.message || 'Error al cargar precio'); }
   };
 
   const handleCargaBatch = async () => {
@@ -232,7 +232,7 @@ const Precios = () => {
       const result = await cargarPreciosBatch(preciosData);
       setSuccess(`Batch: ${result.exitosos} ok, ${result.fallidos} fallidos`);
       fetchEmpresas();
-    } catch (err) { setError(err.response?.data?.message || 'Error'); }
+    } catch (err) { setError(err.response?.data?.message || err.message || 'Error al cargar precios en batch'); }
   };
 
   const inputStyle = modalInput(isMobile);

@@ -228,7 +228,7 @@ const UsuariosCuentas = () => {
 
   const fetchMercados = async () => {
     try { setMercados(await getMercados()); } 
-    catch (err) { console.error('Error cargando mercados:', err); }
+    catch (err) { console.error('[UsuariosCuentas] Error loading markets:', err?.message); }
   };
 
   const fetchTops = async () => {
@@ -323,7 +323,7 @@ const UsuariosCuentas = () => {
       await habilitarMercado(selectedUsuario.id, idMercado);
       setSuccess('Mercado habilitado');
       handleUsuarioClick(selectedUsuario);
-    } catch (err) { setError(err.response?.data?.message || 'Error'); }
+    } catch (err) { setError(err.response?.data?.message || err.message || 'Error al habilitar mercado'); }
   };
 
   const handleDeshabilitarMercado = async (idMercado) => {
@@ -332,7 +332,7 @@ const UsuariosCuentas = () => {
       await deshabilitarMercado(selectedUsuario.id, idMercado);
       setSuccess('Mercado deshabilitado');
       handleUsuarioClick(selectedUsuario);
-    } catch (err) { setError(err.response?.data?.message || 'Error'); }
+    } catch (err) { setError(err.response?.data?.message || err.message || 'Error al deshabilitar mercado'); }
   };
 
   const handleDeshabilitar = async () => {

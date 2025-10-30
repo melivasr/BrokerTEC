@@ -253,10 +253,10 @@ export default async function seedData() {
 
     console.log("Datos insertados en Transaccion");
 
-    console.log("\nInsercion completada con exito!");
-    console.log("   Traders: juanp, anag, luisf (password: password123, password456, password789)");
-    console.log("   Analistas: marial, carlosr (password: analyst123, analyst456)");
-    console.log("   Admins: carmens, diegov (password: admin123, admin456)");
+    console.log("\nInserción completada con éxito!");
+    console.log("Traders: juanp, anag, luisf");
+    console.log("Analistas: marial, carlosr");
+    console.log("Admins: carmens, diegov");
     
   } catch (error) {
     console.error("Error durante la insercion de datos:", error);

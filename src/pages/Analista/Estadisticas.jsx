@@ -129,7 +129,9 @@ export default function Estadisticas() {
       try {
         setMercados(await analistaService.getMercados());
       } catch (err) {
-        console.error('Error cargando mercados:', err);
+        console.error('[Estadisticas] Error loading markets:', err?.message);
+        const msg = err?.response?.data?.message || err?.message || 'Error al cargar mercados';
+        setError(msg);
       }
     }
     cargarMercados();
@@ -155,7 +157,7 @@ export default function Estadisticas() {
         setData(resultado.estadisticas || []);
       }
     } catch (err) {
-      console.error('Error:', err);
+      console.error('[Estadisticas] Error loading statistics:', err?.message);
       setError(err?.response?.data?.message || err?.message || 'Error al cargar estadísticas');
     }
 

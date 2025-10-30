@@ -4,9 +4,11 @@ import { getTransaccionesEmpresa, getMayorTenedor, getInventarioTesoreria, getHi
     getEmpresasPorMercado, getHistorialUsuario, getEstadisticasMercado, getEstadisticasEmpresa,
     getMercados
 } from '../controllers/analistaController.js';
-import { verifyToken } from '../middlewares/authMiddleware.js';
+import { verifyToken, verifyRole } from '../middlewares/authMiddleware.js';
 
+// Proteger rutas de analista: permite tanto Analista como Admin
 router.use(verifyToken);
+router.use(verifyRole('Analista', 'Admin'));
 router.get('/empresa/:id/transacciones', getTransaccionesEmpresa);    
 router.get('/empresa/:id/mayor-tenedor', getMayorTenedor);             
 router.get('/empresa/:id/inventario-tesoreria', getInventarioTesoreria); 

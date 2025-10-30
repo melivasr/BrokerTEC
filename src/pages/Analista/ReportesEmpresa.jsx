@@ -252,7 +252,9 @@ export default function ReportesEmpresa() {
         const emp = await analistaService.getEmpresasPorMercado();
         setEmpresas(emp);
       } catch (err) {
-        console.error('Error cargando datos iniciales:', err);
+        console.error('[ReportesEmpresa] Error loading initial data:', err?.message);
+        const msg = err?.response?.data?.message || err?.message || 'Error al cargar datos iniciales';
+        setError(msg);
       }
     }
     cargarInicial();
@@ -264,7 +266,9 @@ export default function ReportesEmpresa() {
         const emp = await analistaService.getEmpresasPorMercado(filtros.mercadoId || null);
         setEmpresas(emp);
       } catch (err) {
-        console.error('Error cargando empresas:', err);
+        console.error('[ReportesEmpresa] Error loading companies:', err?.message);
+        const msg = err?.response?.data?.message || err?.message || 'Error al cargar empresas';
+        setError(msg);
       }
     }
     cargarEmpresas();
@@ -311,7 +315,7 @@ export default function ReportesEmpresa() {
       setHistoricoPrecio(hist);
 
     } catch (err) {
-      console.error('Error:', err);
+      console.error('[ReportesEmpresa] Error loading report data:', err?.message);
       setError(err?.response?.data?.message || err?.message || 'Error al cargar datos');
     }
 

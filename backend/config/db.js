@@ -12,7 +12,6 @@ export const dbConfig = {
 };
 
 export async function queryDB(query, params = {}) {
-  console.log("DB config:", dbConfig);
   const pool = await sql.connect(dbConfig);
   const request = pool.request();
   Object.entries(params).forEach(([key, value]) =>

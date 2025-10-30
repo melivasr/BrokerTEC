@@ -1,7 +1,6 @@
 import express from 'express';
-import { verifyToken } from '../middlewares/authMiddleware.js';
+import { verifyToken, verifyRole, verifyBilleterable } from '../middlewares/authMiddleware.js';
 
-// Controllers (centralized trader controller)
 import {
 	getWallet,
 	recargarWallet,
@@ -20,8 +19,10 @@ import {
 
 const router = express.Router();
 
-// Todas las rutas aquí usan verifyToken excepto las específicamente marcadas
+// Proteger todas las rutas de trader requiriendo token válido y rol 'Trader'
 router.use(verifyToken);
+router.use(verifyRole('Trader'));
+router.use(verifyBilleterable); // Validar billetera en todas las rutas
 
 // Wallet routes
 router.get("/wallet", getWallet);

@@ -32,7 +32,7 @@ export async function getTransaccionesEmpresa(req, res) {
 
     res.json(transacciones);
   } catch (e) {
-    console.error("Error:", e);
+    console.error('[getTransaccionesEmpresa] Error fetching transactions:', e.message);
     res.status(500).json({ message: "Error al obtener transacciones" });
   }
 }
@@ -82,7 +82,7 @@ export async function getMayorTenedor(req, res) {
 
     res.json(mayor);
   } catch (e) {
-    console.error("Error:", e);
+    console.error('[getMayorTenedor] Error fetching top holder:', e.message);
     res.status(500).json({ message: "Error al obtener mayor tenedor" });
   }
 }
@@ -117,7 +117,7 @@ export async function getInventarioTesoreria(req, res) {
       porcentaje_circulacion: porcentajeCirculacion.toFixed(2),
     });
   } catch (e) {
-    console.error("Error:", e);
+    console.error('[getInventarioTesoreria] Error fetching treasury inventory:', e.message);
     res.status(500).json({ message: "Error al obtener inventario" });
   }
 }
@@ -158,7 +158,7 @@ export async function getHistorialPrecio(req, res) {
 
     res.json(historial);
   } catch (e) {
-    console.error("Error:", e);
+    console.error('[getHistorialPrecio] Error fetching price history:', e.message);
     res.status(500).json({ message: "Error al obtener historial de precios" });
   }
 }
@@ -182,7 +182,7 @@ export async function getEmpresasPorMercado(req, res) {
     const empresas = await queryDB(sql, params);
     res.json(empresas);
   } catch (e) {
-    console.error("Error:", e);
+    console.error('[getEmpresasPorMercado] Error fetching companies by market:', e.message);
     res.status(500).json({ message: "Error al obtener empresas" });
   }
 }
@@ -227,7 +227,7 @@ export async function getHistorialUsuario(req, res) {
 
     res.json({ alias, historial });
   } catch (e) {
-    console.error("Error:", e);
+    console.error('[getHistorialUsuario] Error fetching user history:', e.message);
     res.status(500).json({ message: "Error al obtener historial del usuario" });
   }
 }
@@ -289,7 +289,7 @@ export async function getEstadisticasMercado(req, res) {
 
     res.json({ estadisticas: out });
   } catch (e) {
-    console.error("Error:", e);
+    console.error('[getEstadisticasMercado] Error calculating market statistics:', e.message);
     res.status(500).json({ message: "Error al obtener estadísticas" });
   }
 }
@@ -298,8 +298,6 @@ export async function getEstadisticasEmpresa(req, res) {
   const { id_mercado } = req.query;
 
   try {
-    // Nota: en SQL Server puedes usar @id_mercado como parámetro;
-    // ajusta el "WHERE" según tu driver.
     let sql = `
       SELECT 
         e.id,
@@ -370,7 +368,7 @@ export async function getEstadisticasEmpresa(req, res) {
 
     res.json({ estadisticas: out });
   } catch (e) {
-    console.error("Error:", e);
+    console.error('[getEstadisticasEmpresa] Error calculating company statistics:', e.message);
     res.status(500).json({ message: "Error al obtener estadísticas" });
   }
 }
@@ -381,7 +379,7 @@ export async function getMercados(req, res) {
     const rows = await queryDB(`SELECT id, nombre FROM Mercado ORDER BY nombre`);
     res.json(rows);
   } catch (e) {
-    console.error("Error:", e);
+    console.error('[getMercados] Error fetching markets:', e.message);
     res.status(500).json({ message: "Error al obtener mercados" });
   }
 }
