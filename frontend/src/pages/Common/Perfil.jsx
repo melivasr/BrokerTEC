@@ -108,7 +108,7 @@ export default function Perfil() {
       setSuccess("Cuenta eliminada. Redirigiendo...");
       setTimeout(() => navigate ("/login"), 2000);
     } catch (err) {
-      setError(err?.message || "Error al eliminar cuenta.");
+      setError(err?.message || "Error al eliminar cuenta. Hay transacciones realizadas y mercados habilitados para este usuario.");
     }
   };
 
